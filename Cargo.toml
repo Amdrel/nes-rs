@@ -1,0 +1,7 @@
+[package]
+name = "nes-rs"
+version = "0.1.0"
+authors = ["Walter Kuppens <reshurum@gmail.com>"]
+
+[dependencies]
+getopts = "0.2"
