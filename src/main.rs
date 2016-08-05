@@ -1,17 +1,64 @@
 extern crate getopts;
 
 use getopts::Options;
+use std::env;
+use std::io::Write;
 
 const EXIT_SUCCESS: u8 = 0;
-const EXIT_FAILURE: u8 = 1; // Generic error.
+const EXIT_FAILURE: u8 = 1; // Generic error ¯\_(ツ)_/¯.
+
+/// Prints the application name alongside the cargo version.
+fn print_version() {
+    println!("nes-rs {}", env!("CARGO_PKG_VERSION"));
+}
+
+/// Prints usage information.
+fn print_usage(opts: Options) {
+    let mut stderr = std::io::stderr();
+
+    writeln!(stderr, "nes-rs is an incomplete NES emulator written in Rust.").unwrap();
+    writeln!(stderr, "").unwrap();
+    writeln!(stderr, "{}", opts.usage("Usage: nes-rs [OPTIONS] ROM")).unwrap();
+    writeln!(stderr, "To contribute or report bugs, please see:").unwrap();
+    writeln!(stderr, "<https://github.com/Reshurum/nes-rs>").unwrap();
+}
 
 /// Initializes and starts the emulator. Returns an exit code after which the
 /// program unwinds and stops executing. Once the emulator starts executing, the
 /// application should only stop due to user input, or a panic.
 fn init() -> u8 {
-    // TODO: Parse command line arguments (e.g rom file).
+    // Initialize the argument parser and parse them.
+    let args: Vec<String> = env::args().collect();
+    let mut opts = Options::new();
+    opts.optflag("v", "version", "print version information");
+    opts.optflag("h", "help", "print this message");
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(f) => {
+            println!("{}", f.to_string());
+            print_usage(opts);
+            return EXIT_FAILURE
+        },
+    };
 
-    println!("Hello, world!");
+    if matches.opt_present("v") {
+        print_version();
+        return EXIT_SUCCESS
+    }
+    if matches.opt_present("h") {
+        print_usage(opts);
+        return EXIT_SUCCESS
+    }
+
+    // Assume the first free argument is the rom filename.
+    let rom_file_name = if !matches.free.is_empty() {
+        matches.free[0].clone()
+    } else {
+        print_usage(opts);
+        return EXIT_FAILURE
+    };
+
+    println!("Hello, emulation scene!");
     EXIT_SUCCESS
 }
 
