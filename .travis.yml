@@ -1,0 +1,6 @@
+language: rust
+dist: trusty
+rust:
+  - beta
+  - nightly
+  - stable
