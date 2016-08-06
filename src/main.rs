@@ -12,17 +12,29 @@ use getopts::Options;
 use std::env;
 use std::io::Write;
 
-const EXIT_SUCCESS: u8 = 0;
-const EXIT_FAILURE: u8 = 1; // Generic error ¯\_(ツ)_/¯.
+mod binutils;
+
+// Exit codes used throughout the application. These exit codes has specific
+// meanings and are used when no OS error codes are available.
+const EXIT_SUCCESS: i32 = 0;
+const EXIT_FAILURE: i32 = 1; // Generic error ¯\_(ツ)_/¯.
 
 /// Prints the application name alongside the cargo version.
 fn print_version() {
     println!("nes-rs {}", env!("CARGO_PKG_VERSION"));
 }
 
-/// Prints usage information.
-fn print_usage(opts: Options) {
+/// Prints usage information with an optional reason.
+fn print_usage(opts: Options, reason: Option<&str>) {
     let mut stderr = std::io::stderr();
+
+    // Print the reason only if it was passed.
+    match reason {
+        Some(r) => {
+            writeln!(stderr, "{}", r).unwrap();
+        },
+        None => {}
+    }
 
     writeln!(stderr, "nes-rs is an incomplete NES emulator written in Rust.").unwrap();
     writeln!(stderr, "").unwrap();
@@ -34,7 +46,7 @@ fn print_usage(opts: Options) {
 /// Initializes and starts the emulator. Returns an exit code after which the
 /// program unwinds and stops executing. Once the emulator starts executing, the
 /// application should only stop due to user input, or a panic.
-fn init() -> u8 {
+fn init() -> i32 {
     // Initialize the argument parser and parse them.
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -44,26 +56,38 @@ fn init() -> u8 {
         Ok(m) => m,
         Err(f) => {
             println!("{}", f.to_string());
-            print_usage(opts);
+            print_usage(opts, None);
             return EXIT_FAILURE
         },
     };
 
+    // Handle flag based arguments.
     if matches.opt_present("v") {
         print_version();
         return EXIT_SUCCESS
     }
     if matches.opt_present("h") {
-        print_usage(opts);
+        print_usage(opts, None);
         return EXIT_SUCCESS
     }
 
-    // Assume the first free argument is the rom filename.
+    // Assume the first free argument is the rom filename. Bail if there are
+    // no free arguments.
     let rom_file_name = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
-        print_usage(opts);
+        print_usage(opts, Some("nes-rs: no rom passed, cannot start emulation"));
         return EXIT_FAILURE
+    };
+
+    // Read the rom from file using the filename passed from the command-line.
+    let rom = match binutils::read_bin(&rom_file_name) {
+        Ok(rom) => rom,
+        Err(e) => {
+            let mut stderr = std::io::stderr();
+            writeln!(stderr, "nes-rs: cannot open {}: {}", rom_file_name, e).unwrap();
+            return e.raw_os_error().unwrap()
+        }
     };
 
     println!("Hello, emulation scene!");
@@ -76,6 +100,6 @@ fn main() {
     // std::process::exit requires a signed 32 bit integer, however POSIX
     // systems cannot have an exit code greater than 8 bits so that is what the
     // init function returns.
-    let exit_code = init() as i32;
+    let exit_code = init();
     std::process::exit(exit_code); // Unwinding done, safe to exit.
 }
