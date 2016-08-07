@@ -1,4 +1,4 @@
-# nes-rs
+# nes-rs [![Build Status](https://travis-ci.org/Reshurum/nes-rs.svg?branch=master)](https://travis-ci.org/Reshurum/nes-rs)
 
 nes-rs is an incomplete NES emulator written in Rust. The name is subject
 to change once I find something more catchy.
