@@ -18,6 +18,7 @@ mod binutils;
 // meanings and are used when no OS error codes are available.
 const EXIT_SUCCESS: i32 = 0;
 const EXIT_FAILURE: i32 = 1; // Generic error ¯\_(ツ)_/¯.
+const EXIT_INVALID: i32 = 2; // Invalid rom passed.
 
 /// Prints the application name alongside the cargo version.
 fn print_version() {
@@ -89,6 +90,16 @@ fn init() -> i32 {
             return e.raw_os_error().unwrap()
         }
     };
+
+    // Parse the rom's header to check if it's a valid iNES rom.
+    match binutils::parse_rom_header(&rom) {
+        Ok(_) => {},
+        Err(e) => {
+            let mut stderr = std::io::stderr();
+            writeln!(stderr, "nes-rs: cannot parse {}: {}", rom_file_name, e).unwrap();
+            return EXIT_INVALID
+        }
+    }
 
     println!("Hello, emulation scene!");
     EXIT_SUCCESS
