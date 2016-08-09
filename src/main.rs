@@ -92,14 +92,16 @@ fn init() -> i32 {
     };
 
     // Parse the rom's header to check if it's a valid iNES rom.
-    match binutils::parse_rom_header(&rom) {
-        Ok(_) => {},
+    let header = match binutils::parse_rom_header(&rom) {
+        Ok(header) => header,
         Err(e) => {
+            // TODO: Add complain macro or function, too much repetition.
             let mut stderr = std::io::stderr();
             writeln!(stderr, "nes-rs: cannot parse {}: {}", rom_file_name, e).unwrap();
             return EXIT_INVALID
         }
-    }
+    };
+    println!("{:?}", header);
 
     println!("Hello, emulation scene!");
     EXIT_SUCCESS
