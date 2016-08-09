@@ -59,7 +59,7 @@ pub fn parse_rom_header(rom: &[u8]) -> Result<INESHeader, &str> {
     // Return an iNES header containing fields filled in from the rom.
     Ok(INESHeader {
         identifier: new_identifier,
-        prg_rom_size: rom[0x4].clone(),
+        prg_rom_size: rom[0x4],
         chr_rom_size: rom[0x5],
         flags_6: rom[0x6],
         flags_7: rom[0x7],
