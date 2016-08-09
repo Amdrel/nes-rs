@@ -19,6 +19,11 @@ to be done for a long time.
 For now the only dependency is rust itself, however this is subject to change
 once I start working on the PPU and I plan to use SDL.
 
+## Literature
+
+* [obelisk 6502 documentation](http://www.obelisk.me.uk/6502/)
+* [NESdev wiki](http://wiki.nesdev.com/w/index.php/Nesdev_Wiki)
+
 ## License
 
 Licensed under either of the following licenses at your option:
