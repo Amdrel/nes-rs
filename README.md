@@ -1,4 +1,4 @@
-# nes-rs [![Build Status](https://travis-ci.org/Reshurum/nes-rs.svg?branch=master)](https://travis-ci.org/Reshurum/nes-rs)
+# nes-rs [![Build Status](https://travis-ci.org/Reshurum/nes-rs.svg?branch=master)](https://travis-ci.org/Reshurum/nes-rs) [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)]()
 
 nes-rs is an incomplete NES emulator written in Rust. The name is subject
 to change once I find something more catchy.
