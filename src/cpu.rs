@@ -6,6 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/// This is an implementation of 2A03 processor used in the NES. The 2A03 is
+/// based off the 6502 processor with some minor changes such as having no
+/// binary-coded decimal mode. Currently only the NTSC variant of the chip is
+/// planned to be implemented.
+///
+/// Much of the information and comments are due credit to www.obelisk.me.uk,
+/// which has really good information about the 6502 processor. If you're
+/// interested in diving further, I recommend you give that site a visit.
 pub struct CPU {
     // The program counter is a 16 bit register which points to the next
     // instruction to be executed. The value of program counter is modified
@@ -16,9 +24,75 @@ pub struct CPU {
     // returning from a subroutine or interrupt.
     pc: u16,
 
+    // The processor supports a 256 byte stack located between $0100 and $01FF.
+    // The stack pointer is an 8 bit register and holds the next free location
+    // on the stack. The location of the stack is fixed and cannot be moved and
+    // grows downwards.
     sp: u8,
+
+    // The 8 bit accumulator is used all arithmetic and logical operations (with
+    // the exception of increments and decrements). The contents of the
+    // accumulator can be stored and retrieved either from memory or the stack.
     a: u8,
+
+    // The 8 bit X register can be used to manage memory, compare values in
+    // memory, and be incremented or decremented. The X register is special as
+    // it can be used to get a copy of the stack pointer or change its value.
     x: u8,
+
+    // The 8 bit Y register like X, can be used to manage memory and be
+    // incremented or decremented; however it doesn't have any special functions
+    // like the X register does.
     y: u8,
+
+    // The Processor Status register contains a list of flags that are set and
+    // cleared by instructions to record the results of operations. Each flag
+    // has a special bit within the register (8 bits).  Instructions exist to
+    // set, clear, and read the various flags. One even allows pushing or
+    // pulling the flags to the stack.
+    //
+    // Carry Flag:
+    //
+    // The carry flag is set if the last operation caused an overflow from bit 7
+    // of the result or an underflow from bit 0. This condition is set during
+    // arithmetic, comparison and during logical shifts. It can be explicitly
+    // set using the 'Set Carry Flag' (SEC) instruction and cleared with 'Clear
+    // Carry Flag' (CLC).
+    //
+    // Zero Flag:
+    //
+    // The zero flag is set if the result of the last operation as was zero.
+    //
+    // Interrupt Disable:
+    //
+    // The interrupt disable flag is set if the program has executed a 'Set
+    // Interrupt Disable' (SEI) instruction. While this flag is set the
+    // processor will not respond to interrupts from devices until it is cleared
+    // by a 'Clear Interrupt Disable' (CLI) instruction.
+    //
+    // Decimal Mode: (UNUSED in 2A03)
+    //
+    // While the decimal mode flag is set the processor will obey the rules of
+    // Binary Coded Decimal (BCD) arithmetic during addition and subtraction.
+    // The flag can be explicitly set using 'Set Decimal Flag' (SED) and cleared
+    // with 'Clear Decimal Flag' (CLD).
+    //
+    // Break Command:
+    //
+    // The break command bit is set when a BRK instruction has been executed and
+    // an interrupt has been generated to process it.
+    //
+    // Overflow Flag:
+    //
+    // The overflow flag is set during arithmetic operations if the result has
+    // yielded an invalid 2's complement result (e.g. adding to positive numbers
+    // and ending up with a negative result: 64 + 64 => -128). It is determined
+    // by looking at the carry between bits 6 and 7 and between bit 7 and the
+    // carry flag.
+    //
+    // Negative Flag:
+    //
+    // The negative flag is set if the result of the last operation had bit 7
+    // set to a one.
     p: u8
 }

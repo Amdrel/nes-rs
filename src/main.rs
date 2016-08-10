@@ -13,6 +13,7 @@ use std::env;
 use std::io::Write;
 
 mod binutils;
+mod cpu;
 
 // Exit codes used throughout the application. These exit codes has specific
 // meanings and are used when no OS error codes are available.
