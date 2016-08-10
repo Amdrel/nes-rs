@@ -12,8 +12,8 @@ use getopts::Options;
 use std::env;
 use std::io::Write;
 
-mod binutils;
-mod cpu;
+mod io;
+mod nes;
 
 // Exit codes used throughout the application. These exit codes has specific
 // meanings and are used when no OS error codes are available.
@@ -83,7 +83,7 @@ fn init() -> i32 {
     };
 
     // Read the rom from file using the filename passed from the command-line.
-    let rom = match binutils::read_bin(&rom_file_name) {
+    let rom = match io::binutils::read_bin(&rom_file_name) {
         Ok(rom) => rom,
         Err(e) => {
             let mut stderr = std::io::stderr();
@@ -93,7 +93,7 @@ fn init() -> i32 {
     };
 
     // Parse the rom's header to check if it's a valid iNES rom.
-    let header = match binutils::parse_rom_header(&rom) {
+    let header = match io::binutils::parse_rom_header(&rom) {
         Ok(header) => header,
         Err(e) => {
             // TODO: Add complain macro or function, too much repetition.

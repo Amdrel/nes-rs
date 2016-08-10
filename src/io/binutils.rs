@@ -16,6 +16,8 @@ use std::result::Result;
 // be at the start of every rom.
 const INES_IDENTIFIER: [u8; 4] = [0x4E, 0x45, 0x53, 0x1A];
 
+/// Structure that represents the 16 byte header of an iNES rom. Only missing
+/// the zero fill as it's unused space.
 #[derive(Debug)]
 pub struct INESHeader {
     identifier: [u8; 4], // File format identifier.
