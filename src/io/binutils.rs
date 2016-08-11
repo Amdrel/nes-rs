@@ -33,12 +33,8 @@ pub struct INESHeader {
 /// Reads a binary file at a given path and stores it in a vector of bytes.
 pub fn read_bin<P: AsRef<Path>>(path: P) -> Result<Vec<u8>, Error> {
     let mut buffer: Vec<u8> = Vec::new();
-    match File::open(path) {
-        Ok(mut file) => {
-            file.read_to_end(&mut buffer).unwrap();
-        },
-        Err(e) => return Err(e)
-    }
+    let mut file = try!(File::open(path));
+    try!(file.read_to_end(&mut buffer));
     Ok(buffer)
 }
 
