@@ -48,10 +48,16 @@ pub fn read_bin<P: AsRef<Path>>(path: P) -> Result<Vec<u8>, Error> {
 /// identified by the literal byte string "NES<0x1A>". If the rom is not in the
 /// iNES format, then it cannot be executed by the emulator.
 pub fn parse_rom_header(rom: &[u8]) -> Result<INESHeader, &str> {
+    // The header takes at least 0x10 bytes of space at the start of the rom.
+    let invalid_header = "rom does not contain iNES identifier and is invalid";
+    if rom.len() < 0x10 {
+        return Err(invalid_header)
+    }
+
     // Validate that the rom is formatted in the iNES format.
     let identifier = &rom[0x0..0x4];
     if identifier != INES_IDENTIFIER {
-        return Err("rom does not contain iNES identifier and is invalid")
+        return Err(invalid_header)
     }
 
     // Copy the identifier from the rom for placement in the header.
