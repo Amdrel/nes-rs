@@ -8,12 +8,13 @@
 
 extern crate getopts;
 
-use getopts::Options;
-use std::env;
-use std::io::Write;
-
 mod io;
 mod nes;
+
+use getopts::Options;
+use nes::nes::NES;
+use std::env;
+use std::io::Write;
 
 // Exit codes used throughout the application. These exit codes has specific
 // meanings and are used when no OS error codes are available.
@@ -103,6 +104,9 @@ fn init() -> i32 {
         }
     };
     println!("{:?}", header);
+
+    let mut nes = NES::new(rom);
+    nes.test();
 
     println!("Hello, emulation scene!");
     EXIT_SUCCESS

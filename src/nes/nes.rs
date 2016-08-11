@@ -6,4 +6,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use nes::cpu::CPU;
+use nes::memory::Memory;
 
+pub struct NES {
+    cpu: CPU,
+    memory: Memory
+}
+
+impl NES {
+    pub fn new(rom: Vec<u8>) -> NES {
+        NES {
+            cpu: CPU::new(),
+            memory: Memory::new()
+        }
+    }
+
+    pub fn test(&mut self) {
+        // FIXME: Temporary code, please remove at some point!
+        let (bank, idx) = self.memory.map(0x1FFF);
+        println!("{:?}, index: {:#X}", bank, idx);
+    }
+}

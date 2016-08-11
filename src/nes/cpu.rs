@@ -20,8 +20,8 @@ pub struct CPU {
     // automatically as instructions are executed.
     //
     // The value of the program counter can be modified by executing a jump, a
-    // relative branch or a subroutine call to another memory address or by
-    // returning from a subroutine or interrupt.
+    // relative branch, a subroutine call to another memory address, by
+    // returning from a subroutine, or by an interrupt.
     pc: u16,
 
     // The processor supports a 256 byte stack located between $0100 and $01FF.
@@ -95,4 +95,17 @@ pub struct CPU {
     // The negative flag is set if the result of the last operation had bit 7
     // set to a one.
     p: u8
+}
+
+impl CPU {
+    pub fn new() -> CPU {
+        CPU {
+            pc: 0,
+            sp: 0,
+            a: 0,
+            x: 0,
+            y: 0,
+            p: 0
+        }
+    }
 }

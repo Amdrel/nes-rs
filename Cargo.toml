@@ -5,3 +5,4 @@ authors = ["Walter Kuppens <reshurum@gmail.com>"]
 
 [dependencies]
 getopts = "0.2"
+byteorder = "0.5"

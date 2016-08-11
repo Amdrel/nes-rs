@@ -25,7 +25,8 @@ pub struct INESHeader {
     chr_rom_size: u8,    // Size of CHR ROM in 8 KB units.
     flags_6: u8,
     flags_7: u8,
-    prg_ram_size: u8,    // Size of PRG RAM in 8 KB units (0 infers 8 KB for compatibility).
+    prg_ram_size: u8,    // Size of PRG RAM in 8 KB units (0 infers 8 KB for
+                         // compatibility).
     flags_9: u8,
     flags_10: u8         // Unofficial, unused by most emulators.
 }
