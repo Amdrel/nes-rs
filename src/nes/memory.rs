@@ -7,10 +7,11 @@
 // except according to those terms.
 
 // Memory partition sizes (physical).
+// TODO: Calculate based on ranges below.
 const RAM_SIZE: usize = 0x800;
 const PPU_CTRL_REGISTERS_SIZE: usize = 0x8;
 const MISC_CTRL_REGISTERS_SIZE: usize = 0x20;
-const EXPANSION_ROM_SIZE: usize = 0x1FDF;
+const EXPANSION_ROM_SIZE: usize = 0x1FE0;
 const SRAM_SIZE: usize = 0x2000;
 const PRG_ROM_SIZE: usize = 0x4000;
 
@@ -19,6 +20,20 @@ const RAM_START_ADDR: usize = 0x0;
 const RAM_END_ADDR: usize = 0x7FF;
 const RAM_MIRROR_START: usize = 0x800;
 const RAM_MIRROR_END: usize = 0x1FFF;
+const PPU_CTRL_REGISTERS_START: usize = 0x2000;
+const PPU_CTRL_REGISTERS_END: usize = 0x2007;
+const PPU_CTRL_REGISTERS_MIRROR_START: usize = 0x2008;
+const PPU_CTRL_REGISTERS_MIRROR_END: usize = 0x3FFF;
+const MISC_CTRL_REGISTERS_START: usize = 0x4000;
+const MISC_CTRL_REGISTERS_END: usize = 0x401F;
+const EXPANSION_ROM_START: usize = 0x4020;
+const EXPANSION_ROM_END: usize = 0x5FFF;
+const SRAM_START: usize = 0x6000;
+const SRAM_END: usize = 0x7FFF;
+const PRG_ROM_1_START: usize = 0x8000;
+const PRG_ROM_1_END: usize = 0xBFFF;
+const PRG_ROM_2_START: usize = 0xC000;
+const PRG_ROM_2_END: usize = 0xFFFF;
 
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the CPU implementation and are instead
@@ -81,6 +96,28 @@ impl Memory {
         if self.addr_in_range(addr, RAM_MIRROR_START, RAM_MIRROR_END) {
             let new_addr = addr % RAM_SIZE;
             return (&mut self.ram, new_addr)
+        }
+
+        // Address translation for accessing the PPU control registers.
+        if self.addr_in_range(addr, PPU_CTRL_REGISTERS_START,
+                              PPU_CTRL_REGISTERS_END) {
+            let new_addr = addr - PPU_CTRL_REGISTERS_START;
+            return (&mut self.ppu_ctrl_registers, new_addr)
+        }
+
+        // Address translation for mirroring of the PPU control registers. PPU
+        // control at $2000-$2007 is mirrored 1023 times at $2008-$3FFF.
+        if self.addr_in_range(addr, PPU_CTRL_REGISTERS_MIRROR_START,
+                              PPU_CTRL_REGISTERS_MIRROR_END) {
+            let new_addr = (addr - PPU_CTRL_REGISTERS_START) %
+                PPU_CTRL_REGISTERS_SIZE;
+            return (&mut self.ppu_ctrl_registers, new_addr)
+        }
+
+        if self.addr_in_range(addr, MISC_CTRL_REGISTERS_START,
+                              MISC_CTRL_REGISTERS_END) {
+            let new_addr = addr - MISC_CTRL_REGISTERS_START;
+            return (&mut self.misc_ctrl_registers, new_addr)
         }
 
         panic!("Unable to map virtual address {:#X} to any physical address", addr);
