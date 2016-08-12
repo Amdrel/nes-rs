@@ -16,7 +16,7 @@ const PRG_ROM_SIZE: usize = 0x4000;
 
 // Virtual memory map bounds.
 const RAM_START_ADDR: usize = 0x0;
-const RAM_END_ADDR: usize = 0x1FFF;
+const RAM_END_ADDR: usize = 0x7FF;
 
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the cpu implementation and are instead
@@ -56,7 +56,7 @@ impl Memory {
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
     pub fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
-        // Work ram mapping.
+        // Work ram memory mapping.
         if self.addr_in_range(addr, RAM_START_ADDR, RAM_END_ADDR) {
             return (&mut self.ram, addr)
         }
