@@ -17,6 +17,8 @@ const PRG_ROM_SIZE: usize = 0x4000;
 // Virtual memory map bounds.
 const RAM_START_ADDR: usize = 0x0;
 const RAM_END_ADDR: usize = 0x7FF;
+const RAM_MIRROR_START: usize = 0x800;
+const RAM_MIRROR_END: usize = 0x1FFF;
 
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the cpu implementation and are instead
@@ -59,6 +61,12 @@ impl Memory {
         // Work ram memory mapping.
         if self.addr_in_range(addr, RAM_START_ADDR, RAM_END_ADDR) {
             return (&mut self.ram, addr)
+        }
+
+        // Work ram mirror logic.
+        if self.addr_in_range(addr, RAM_MIRROR_START, RAM_MIRROR_END) {
+            let new_addr = addr % RAM_SIZE;
+            return (&mut self.ram, new_addr)
         }
 
         panic!("Unable to map virtual address {:#X} to any physical address", addr);
