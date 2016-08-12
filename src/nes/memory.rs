@@ -21,14 +21,25 @@ const RAM_MIRROR_START: usize = 0x800;
 const RAM_MIRROR_END: usize = 0x1FFF;
 
 /// Partitioned physical memory layout for CPU memory. These fields are not
-/// meant to be accessed directly by the cpu implementation and are instead
+/// meant to be accessed directly by the CPU implementation and are instead
 /// accessed through a read function that handles memory mapping.
 pub struct Memory {
+    // 2kB of internal RAM for which it's use is entirely up to the programmer.
     ram: [u8; RAM_SIZE],
+
+    // Contains PPU registers that allow the running application to communicate
+    // with the PPU.
     ppu_ctrl_registers: [u8; PPU_CTRL_REGISTERS_SIZE],
+
+    // Contains NES APU and I/O registers. Also allows use of APU and I/O
+    // functionality that is normally disabled.
     misc_ctrl_registers: [u8; MISC_CTRL_REGISTERS_SIZE],
+
     expansion_rom: [u8; EXPANSION_ROM_SIZE],
+
+    // 8kB of static RAM.
     sram: [u8; SRAM_SIZE],
+
     prg_rom_1: [u8; PRG_ROM_SIZE],
     prg_rom_2: [u8; PRG_ROM_SIZE]
 }
@@ -58,12 +69,15 @@ impl Memory {
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
     pub fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
-        // Work ram memory mapping.
+        // Address translation for accessing system memory.
         if self.addr_in_range(addr, RAM_START_ADDR, RAM_END_ADDR) {
             return (&mut self.ram, addr)
         }
 
-        // Work ram mirror logic.
+        // Address translation for mirroring of system memory. System memory at
+        // $0000-$07FF is mirrored at $0800-$0FFF, $1000-$17FF, and $1800-$1FFF
+        // - attempting to access memory at, for example, $0173 is the same as
+        // accessing memory at $0973, $1173, or $1973.
         if self.addr_in_range(addr, RAM_MIRROR_START, RAM_MIRROR_END) {
             let new_addr = addr % RAM_SIZE;
             return (&mut self.ram, new_addr)
