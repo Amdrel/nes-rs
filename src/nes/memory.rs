@@ -38,6 +38,9 @@ const PRG_ROM_2_END                  : usize = 0xFFFF;
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the CPU implementation and are instead
 /// accessed through a read function that handles memory mapping.
+///
+/// NOTE: Currently all memory is allocated on the stack. This may not work well
+/// for systems with a small stack and slices should be boxed up.
 pub struct Memory {
     // 2kB of internal RAM for which it's use is entirely up to the programmer.
     ram: [u8; RAM_SIZE],
@@ -72,6 +75,18 @@ impl Memory {
         }
     }
 
+    /// Reads an 8-bit byte value located at the given virtual address.
+    pub fn read_u8(&mut self, addr: usize) -> u8 {
+        let (bank, idx) = self.map(addr);
+        bank[idx]
+    }
+
+    /// Writes an 8-bit byte value to the given virtual address.
+    pub fn write_u8(&mut self, addr: usize, val: u8) {
+        let (bank, idx) = self.map(addr);
+        bank[idx] = val;
+    }
+
     /// Returns true when the provided address is in the provided range
     /// (inclusive).
     ///
@@ -85,7 +100,7 @@ impl Memory {
     /// emulator. Returns a memory buffer and index for physical memory access.
     ///
     /// TODO: Add permissions flag for special addresses?
-    pub fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
+    fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
         // Address translation for accessing system memory. No modifications
         // need to be done to the address as it's at the start of addressable
         // memory.
@@ -149,6 +164,7 @@ impl Memory {
             return (&mut self.prg_rom_2, new_addr)
         }
 
-        panic!("Unable to map virtual address {:#X} to any physical address", addr);
+        panic!("Unable to map virtual address {:#X} to any physical address",
+               addr);
     }
 }

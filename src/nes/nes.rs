@@ -22,9 +22,15 @@ impl NES {
         }
     }
 
+    /// FIXME: Temporary code, please remove at some point!
     pub fn test(&mut self) {
-        // FIXME: Temporary code, please remove at some point!
-        let (bank, idx) = self.memory.map(0xFFFF);
-        println!("{:?}, index: {:#X}", bank, idx);
+        //let (bank, idx) = self.memory.map(0xFFFF);
+        //println!("{:?}, index: {:#X}", bank, idx);
+
+        let read1 = self.memory.read_u8(0x0);
+        println!("{}", read1);
+        self.memory.write_u8(0x800, 5);
+        let read2 = self.memory.read_u8(0x0);
+        println!("{}", read2);
     }
 }
