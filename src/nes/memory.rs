@@ -83,8 +83,12 @@ impl Memory {
 
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
+    ///
+    /// TODO: Add permissions flag for special addresses?
     pub fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
-        // Address translation for accessing system memory.
+        // Address translation for accessing system memory. No modifications
+        // need to be done to the address as it's at the start of addressable
+        // memory.
         if self.addr_in_range(addr, RAM_START_ADDR, RAM_END_ADDR) {
             return (&mut self.ram, addr)
         }
@@ -114,10 +118,35 @@ impl Memory {
             return (&mut self.ppu_ctrl_registers, new_addr)
         }
 
+        // Address translation for miscellaneous registers (such as APU etc).
         if self.addr_in_range(addr, MISC_CTRL_REGISTERS_START,
                               MISC_CTRL_REGISTERS_END) {
             let new_addr = addr - MISC_CTRL_REGISTERS_START;
             return (&mut self.misc_ctrl_registers, new_addr)
+        }
+
+        // Address translation for accessing cartridge expansion ROM.
+        if self.addr_in_range(addr, EXPANSION_ROM_START, EXPANSION_ROM_END) {
+            let new_addr = addr - EXPANSION_ROM_START;
+            return (&mut self.expansion_rom, new_addr)
+        }
+
+        // Address translation for accessing SRAM.
+        if self.addr_in_range(addr, SRAM_START, SRAM_END) {
+            let new_addr = addr - SRAM_START;
+            return (&mut self.sram, new_addr)
+        }
+
+        // Address translation for accessing the program rom (bank 1).
+        if self.addr_in_range(addr, PRG_ROM_1_START, PRG_ROM_1_END) {
+            let new_addr = addr - PRG_ROM_1_START;
+            return (&mut self.prg_rom_1, new_addr)
+        }
+
+        // Address translation for accessing the program rom (bank 2).
+        if self.addr_in_range(addr, PRG_ROM_2_START, PRG_ROM_2_END) {
+            let new_addr = addr - PRG_ROM_2_START;
+            return (&mut self.prg_rom_2, new_addr)
         }
 
         panic!("Unable to map virtual address {:#X} to any physical address", addr);

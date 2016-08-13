@@ -24,7 +24,7 @@ impl NES {
 
     pub fn test(&mut self) {
         // FIXME: Temporary code, please remove at some point!
-        let (bank, idx) = self.memory.map(0x3fff);
+        let (bank, idx) = self.memory.map(0xFFFF);
         println!("{:?}, index: {:#X}", bank, idx);
     }
 }
