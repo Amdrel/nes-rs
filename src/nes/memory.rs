@@ -8,32 +8,32 @@
 
 // Memory partition sizes (physical).
 // TODO: Calculate based on ranges below.
-const RAM_SIZE: usize = 0x800;
-const PPU_CTRL_REGISTERS_SIZE: usize = 0x8;
+const RAM_SIZE                : usize = 0x800;
+const PPU_CTRL_REGISTERS_SIZE : usize = 0x8;
 const MISC_CTRL_REGISTERS_SIZE: usize = 0x20;
-const EXPANSION_ROM_SIZE: usize = 0x1FE0;
-const SRAM_SIZE: usize = 0x2000;
-const PRG_ROM_SIZE: usize = 0x4000;
+const EXPANSION_ROM_SIZE      : usize = 0x1FE0;
+const SRAM_SIZE               : usize = 0x2000;
+const PRG_ROM_SIZE            : usize = 0x4000;
 
 // Virtual memory map bounds.
-const RAM_START_ADDR: usize = 0x0;
-const RAM_END_ADDR: usize = 0x7FF;
-const RAM_MIRROR_START: usize = 0x800;
-const RAM_MIRROR_END: usize = 0x1FFF;
-const PPU_CTRL_REGISTERS_START: usize = 0x2000;
-const PPU_CTRL_REGISTERS_END: usize = 0x2007;
+const RAM_START_ADDR                 : usize = 0x0;
+const RAM_END_ADDR                   : usize = 0x7FF;
+const RAM_MIRROR_START               : usize = 0x800;
+const RAM_MIRROR_END                 : usize = 0x1FFF;
+const PPU_CTRL_REGISTERS_START       : usize = 0x2000;
+const PPU_CTRL_REGISTERS_END         : usize = 0x2007;
 const PPU_CTRL_REGISTERS_MIRROR_START: usize = 0x2008;
-const PPU_CTRL_REGISTERS_MIRROR_END: usize = 0x3FFF;
-const MISC_CTRL_REGISTERS_START: usize = 0x4000;
-const MISC_CTRL_REGISTERS_END: usize = 0x401F;
-const EXPANSION_ROM_START: usize = 0x4020;
-const EXPANSION_ROM_END: usize = 0x5FFF;
-const SRAM_START: usize = 0x6000;
-const SRAM_END: usize = 0x7FFF;
-const PRG_ROM_1_START: usize = 0x8000;
-const PRG_ROM_1_END: usize = 0xBFFF;
-const PRG_ROM_2_START: usize = 0xC000;
-const PRG_ROM_2_END: usize = 0xFFFF;
+const PPU_CTRL_REGISTERS_MIRROR_END  : usize = 0x3FFF;
+const MISC_CTRL_REGISTERS_START      : usize = 0x4000;
+const MISC_CTRL_REGISTERS_END        : usize = 0x401F;
+const EXPANSION_ROM_START            : usize = 0x4020;
+const EXPANSION_ROM_END              : usize = 0x5FFF;
+const SRAM_START                     : usize = 0x6000;
+const SRAM_END                       : usize = 0x7FFF;
+const PRG_ROM_1_START                : usize = 0x8000;
+const PRG_ROM_1_END                  : usize = 0xBFFF;
+const PRG_ROM_2_START                : usize = 0xC000;
+const PRG_ROM_2_END                  : usize = 0xFFFF;
 
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the CPU implementation and are instead
