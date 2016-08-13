@@ -27,10 +27,13 @@ impl NES {
         //let (bank, idx) = self.memory.map(0xFFFF);
         //println!("{:?}, index: {:#X}", bank, idx);
 
-        let read1 = self.memory.read_u8(0x0);
-        println!("{}", read1);
-        self.memory.write_u8(0x800, 5);
-        let read2 = self.memory.read_u8(0x0);
-        println!("{}", read2);
+        //let read1 = self.memory.read_u8(0x0);
+        //println!("{}", read1);
+        //self.memory.write_u8(0x800, 5);
+        //let read2 = self.memory.read_u8(0x0);
+        //println!("{}", read2);
+
+        self.memory.write_u16(0x7FF, 1000);
+        println!("{}", self.memory.read_u16(0x7FF));
     }
 }

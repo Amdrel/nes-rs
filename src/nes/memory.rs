@@ -6,6 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::io::Cursor;
+
 // Memory partition sizes (physical).
 // TODO: Calculate based on ranges below.
 const RAM_SIZE                : usize = 0x800;
@@ -75,16 +78,36 @@ impl Memory {
         }
     }
 
-    /// Reads an 8-bit byte value located at the given virtual address.
+    /// Reads an unsigned 8-bit byte value located at the given virtual address.
     pub fn read_u8(&mut self, addr: usize) -> u8 {
         let (bank, idx) = self.map(addr);
         bank[idx]
     }
 
-    /// Writes an 8-bit byte value to the given virtual address.
+    /// Writes an unsigned 8-bit byte value to the given virtual address.
     pub fn write_u8(&mut self, addr: usize, val: u8) {
         let (bank, idx) = self.map(addr);
         bank[idx] = val;
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian).
+    pub fn read_u16(&mut self, addr: usize) -> u16 {
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![
+            self.read_u8(addr),
+            self.read_u8(addr + 1)
+        ]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Writes an unsigned 16-bit byte value to the given virtual address
+    /// (little-endian)
+    pub fn write_u16(&mut self, addr: usize, val: u16) {
+        let mut writer = vec![];
+        writer.write_u16::<LittleEndian>(val).unwrap();
+        self.write_u8(addr, writer[0]);
+        self.write_u8(addr + 1, writer[1]);
     }
 
     /// Returns true when the provided address is in the provided range
