@@ -33,7 +33,7 @@ impl NES {
         //let read2 = self.memory.read_u8(0x0);
         //println!("{}", read2);
 
-        self.memory.write_u16(0x7FF, 1000);
-        println!("{}", self.memory.read_u16(0x7FF));
+        self.memory.write_u16(0x1000, 1000);
+        println!("{}", self.memory.read_u16(0x0));
     }
 }

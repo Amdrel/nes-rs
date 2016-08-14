@@ -6,6 +6,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Flag constants that allow easy bitwise getting and setting of flag values.
+const CARRY_FLAG       : u8 = 0x1;
+const ZERO_FLAG        : u8 = 0x2;
+const INTERRUPT_DISABLE: u8 = 0x4;
+const DECIMAL_MODE     : u8 = 0x8;
+const BREAK_COMMAND    : u8 = 0x10;
+const OVERFLOW_FLAG    : u8 = 0x40;
+const NEGATIVE_FLAG    : u8 = 0x80;
+
 /// This is an implementation of 2A03 processor used in the NES. The 2A03 is
 /// based off the 6502 processor with some minor changes such as having no
 /// binary-coded decimal mode. Currently only the NTSC variant of the chip is
@@ -15,7 +24,7 @@
 /// which has really good information about the 6502 processor. If you're
 /// interested in diving further, I recommend you give that site a visit.
 pub struct CPU {
-    // The program counter is a 16 bit register which points to the next
+    // The program counter is a 16-bit register which points to the next
     // instruction to be executed. The value of program counter is modified
     // automatically as instructions are executed.
     //
@@ -25,22 +34,22 @@ pub struct CPU {
     pc: u16,
 
     // The processor supports a 256 byte stack located between $0100 and $01FF.
-    // The stack pointer is an 8 bit register and holds the next free location
+    // The stack pointer is an 8-bit register and holds the next free location
     // on the stack. The location of the stack is fixed and cannot be moved and
     // grows downwards.
     sp: u8,
 
-    // The 8 bit accumulator is used all arithmetic and logical operations (with
+    // The 8-bit accumulator is used all arithmetic and logical operations (with
     // the exception of increments and decrements). The contents of the
     // accumulator can be stored and retrieved either from memory or the stack.
     a: u8,
 
-    // The 8 bit X register can be used to manage memory, compare values in
-    // memory, and be incremented or decremented. The X register is special as
-    // it can be used to get a copy of the stack pointer or change its value.
+    // The 8-bit X register can be used to control information, compare values
+    // in memory, and be incremented or decremented. The X register is special
+    // as it can be used to get a copy of the stack pointer or change its value.
     x: u8,
 
-    // The 8 bit Y register like X, can be used to manage memory and be
+    // The 8-bit Y register like X, can be used to manage information and be
     // incremented or decremented; however it doesn't have any special functions
     // like the X register does.
     y: u8,
@@ -100,7 +109,7 @@ pub struct CPU {
 impl CPU {
     pub fn new() -> CPU {
         CPU {
-            pc: 0,
+            pc: 0xC000,
             sp: 0,
             a: 0,
             x: 0,
