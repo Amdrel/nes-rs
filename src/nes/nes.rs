@@ -8,12 +8,16 @@
 
 use io::binutils::INESHeader;
 use nes::cpu::CPU;
-use nes::memory::Memory;
+use nes::memory::{
+    Memory,
+    TRAINER_START,
+    TRAINER_SIZE,
+    PRG_ROM_1_START,
+    PRG_ROM_2_START,
+    PRG_ROM_SIZE
+};
 
-// Constants for additional structures.
-const TRAINER_START: usize = 0x7000;
-const TRAINER_SIZE : usize = 512;
-
+/// The NES struct owns all hardware peripherals and lends them when needed.
 pub struct NES {
     header: INESHeader,
     cpu: CPU,
@@ -27,19 +31,36 @@ impl NES {
 
         // An offset is used when copying from the ROM into RAM as the presence
         // of a trainer will shift the locations of other structures.
-        let mut offset: usize = 0;
+        let mut cursor: usize = 0x10;
 
         // Copy the trainer data to 0x7000 if it exists.
         if header.has_trainer() {
             println!("Trainer data found");
             memory.memdump(TRAINER_START, &rom[0x10..0x210]);
-            offset += TRAINER_SIZE;
+            cursor += TRAINER_SIZE;
         }
 
+        println!("{:?}", header);
+        println!("Using {:?} mapper", header.mapper());
+        println!("Using {:?} mirroring", header.mirror_type());
+
+        // TODO: Mapper handling?
+
+        // Copy PRG-ROM into memory so it can be addressed by the memory mapper.
         if header.prg_rom_size == 2 {
+            // There are 2 PRG-ROM banks, copy them to memory.
             println!("2 PRG-ROM banks detected");
+            let prg_rom_1_addr = cursor;
+            let prg_rom_2_addr = cursor + PRG_ROM_SIZE;
+            memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
+            memory.memdump(PRG_ROM_2_START, &rom[prg_rom_2_addr..prg_rom_2_addr + PRG_ROM_SIZE]);
         } else {
+            // There is only 1 PRG-ROM bank, make the rom addressable at both
+            // 0x8000 and 0xC000.
             println!("1 PRG-ROM bank detected");
+            let prg_rom_1_addr = cursor;
+            memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
+            memory.memdump(PRG_ROM_2_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
         }
 
         NES {

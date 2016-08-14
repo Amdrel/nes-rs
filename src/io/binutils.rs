@@ -22,10 +22,16 @@ const TRAINER_FLAG   : u8 = 0x4;
 const MIRROR_4_SCREEN: u8 = 0x8;
 const MAPPER_NUMBER  : u8 = 0xF0;
 
-enum MirrorType {
+#[derive(Debug)]
+pub enum MirrorType {
     Horizontal,
     Vertical,
     Both
+}
+
+#[derive(Debug)]
+pub enum Mapper {
+    NROM
 }
 
 /// Structure that represents the 16 byte header of an iNES rom. Only missing
@@ -111,10 +117,21 @@ impl INESHeader {
     }
 
     /// Returns the mapper number that signifies which mapper is in use by the
-    /// cartridge. TODO: Add enum with common mapper numbers.
+    /// cartridge. The lower nybble is stored in bits 4-7 in flag 6 while the
+    /// upper nybble is stored in bits 4-7 in flag 7 (same bitmask). The results
+    /// are then OR'd together to create the final 8-bit number.
     #[inline(always)]
-    pub fn mapper(&self) -> u8 {
-        self.flags_6 & MAPPER_NUMBER >> 4
+    pub fn mapper(&self) -> Mapper {
+        let lower = (self.flags_6 & MAPPER_NUMBER) >> 4;
+        let upper = self.flags_7 & MAPPER_NUMBER;
+        let mapper = lower | upper;
+
+        match mapper {
+            0 => Mapper::NROM,
+            _ => {
+                panic!("ROM uses unimplemented mapper: {}", mapper);
+            }
+        }
     }
 }
 
