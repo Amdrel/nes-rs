@@ -18,7 +18,7 @@ const EXPANSION_ROM_SIZE      : usize = 0x1FE0;
 const SRAM_SIZE               : usize = 0x2000;
 const PRG_ROM_SIZE            : usize = 0x4000;
 
-// Virtual memory map bounds.
+// Partitioned virtual memory map bounds.
 const RAM_START_ADDR                 : usize = 0x0;
 const RAM_END_ADDR                   : usize = 0x7FF;
 const RAM_MIRROR_START               : usize = 0x800;
@@ -61,7 +61,10 @@ pub struct Memory {
     // 8kB of static RAM.
     sram: [u8; SRAM_SIZE],
 
+    // PRG-ROM bank 1.
     prg_rom_1: [u8; PRG_ROM_SIZE],
+
+    // PRG-ROM bank 2. Execution starts here.
     prg_rom_2: [u8; PRG_ROM_SIZE]
 }
 
@@ -108,6 +111,13 @@ impl Memory {
         writer.write_u16::<LittleEndian>(val).unwrap();
         self.write_u8(addr, writer[0]);
         self.write_u8(addr + 1, writer[1]);
+    }
+
+    /// Dumps the contents of a slice starting at a given address.
+    pub fn memdump(&mut self, addr: usize, buf: &[u8]) {
+        for i in 0..buf.len() {
+            self.write_u8(addr + i, buf[i]);
+        }
     }
 
     /// Returns true when the provided address is in the provided range

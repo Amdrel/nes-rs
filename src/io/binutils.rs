@@ -91,7 +91,7 @@ impl INESHeader {
     pub fn mirror_type(&self) -> MirrorType {
         if self.flags_6 & MIRROR_4_SCREEN == MIRROR_4_SCREEN {
             return MirrorType::Both
-        } else if (self.flags_6 & MIRROR_TYPE == MIRROR_TYPE) {
+        } else if self.flags_6 & MIRROR_TYPE == MIRROR_TYPE {
             return MirrorType::Vertical
         } else {
             return MirrorType::Horizontal

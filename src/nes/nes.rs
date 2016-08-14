@@ -10,6 +10,10 @@ use io::binutils::INESHeader;
 use nes::cpu::CPU;
 use nes::memory::Memory;
 
+// Constants for additional structures.
+const TRAINER_START: usize = 0x7000;
+const TRAINER_SIZE : usize = 512;
+
 pub struct NES {
     header: INESHeader,
     cpu: CPU,
@@ -19,15 +23,17 @@ pub struct NES {
 impl NES {
     pub fn new(header: INESHeader, rom: Vec<u8>) -> NES {
         let cpu = CPU::new();
-        let memory = Memory::new();
+        let mut memory = Memory::new();
 
         // An offset is used when copying from the ROM into RAM as the presence
         // of a trainer will shift the locations of other structures.
-        let mut offset = 0x0;
+        let mut offset: usize = 0;
 
+        // Copy the trainer data to 0x7000 if it exists.
         if header.has_trainer() {
-            offset += 512;
-            println!("Trainer data found, copying to 0x7000...");
+            println!("Trainer data found");
+            memory.memdump(TRAINER_START, &rom[0x10..0x210]);
+            offset += TRAINER_SIZE;
         }
 
         if header.prg_rom_size == 2 {
@@ -45,15 +51,6 @@ impl NES {
 
     /// FIXME: Temporary code, please remove at some point!
     pub fn test(&mut self) {
-        //let (bank, idx) = self.memory.map(0xFFFF);
-        //println!("{:?}, index: {:#X}", bank, idx);
-
-        //let read1 = self.memory.read_u8(0x0);
-        //println!("{}", read1);
-        //self.memory.write_u8(0x800, 5);
-        //let read2 = self.memory.read_u8(0x0);
-        //println!("{}", read2);
-
         self.memory.write_u16(0x1000, 1000);
         println!("{}", self.memory.read_u16(0x0));
     }
