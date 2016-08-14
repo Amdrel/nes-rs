@@ -6,19 +6,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use io::binutils::INESHeader;
 use nes::cpu::CPU;
 use nes::memory::Memory;
 
 pub struct NES {
+    header: INESHeader,
     cpu: CPU,
     memory: Memory
 }
 
 impl NES {
-    pub fn new(rom: Vec<u8>) -> NES {
+    pub fn new(header: INESHeader, rom: Vec<u8>) -> NES {
+        let cpu = CPU::new();
+        let memory = Memory::new();
+
+        // An offset is used when copying from the ROM into RAM as the presence
+        // of a trainer will shift the locations of other structures.
+        let mut offset = 0x0;
+
+        if header.has_trainer() {
+            offset += 512;
+            println!("Trainer data found, copying to 0x7000...");
+        }
+
+        if header.prg_rom_size == 2 {
+            println!("2 PRG-ROM banks detected");
+        } else {
+            println!("1 PRG-ROM bank detected");
+        }
+
         NES {
-            cpu: CPU::new(),
-            memory: Memory::new()
+            header: header,
+            cpu: cpu,
+            memory: memory
         }
     }
 

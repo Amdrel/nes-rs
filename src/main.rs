@@ -13,6 +13,7 @@ mod io;
 mod nes;
 
 use getopts::Options;
+use io::binutils::INESHeader;
 use nes::nes::NES;
 use std::env;
 use std::io::Write;
@@ -94,8 +95,8 @@ fn init() -> i32 {
         }
     };
 
-    // Parse the rom's header to check if it's a valid iNES rom.
-    let header = match io::binutils::parse_rom_header(&rom) {
+    // Parse the rom's header to check if it's a valid iNES ROM.
+    let header = match INESHeader::new(&rom) {
         Ok(header) => header,
         Err(e) => {
             // TODO: Add complain macro or function, too much repetition.
@@ -104,12 +105,10 @@ fn init() -> i32 {
             return EXIT_INVALID
         }
     };
-    println!("{:?}", header);
 
-    let mut nes = NES::new(rom);
+    let mut nes = NES::new(header, rom);
     nes.test();
 
-    println!("Hello, emulation scene!");
     EXIT_SUCCESS
 }
 
