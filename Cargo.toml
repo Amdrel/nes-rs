@@ -6,3 +6,5 @@ authors = ["Walter Kuppens <reshurum@gmail.com>"]
 [dependencies]
 getopts = "0.2"
 byteorder = "0.5"
+enum_primitive = "0.1"
+num = "0.1"

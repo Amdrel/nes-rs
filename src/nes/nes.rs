@@ -8,6 +8,7 @@
 
 use io::binutils::INESHeader;
 use nes::cpu::CPU;
+use nes::instruction::Instruction;
 use nes::memory::{
     Memory,
     TRAINER_START,
@@ -70,9 +71,15 @@ impl NES {
         }
     }
 
+    /// Starts the execution loop and starts executing PRG-ROM.
+    pub fn execute() {
+    }
+
     /// FIXME: Temporary code, please remove at some point!
     pub fn test(&mut self) {
-        self.memory.write_u16(0x1000, 1000);
-        println!("{}", self.memory.read_u16(0x0));
+        let encoded = [0x4C, 0xF5, 0xC5];
+        let (instr, len, cycles) = Instruction::decode(&encoded, false);
+        instr.log(&self.cpu);
+        println!("{:?}, len = {}, cycles = {}", instr, len, cycles);
     }
 }

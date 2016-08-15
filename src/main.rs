@@ -6,8 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_use] extern crate enum_primitive;
 extern crate byteorder;
 extern crate getopts;
+extern crate num;
 
 mod io;
 mod nes;

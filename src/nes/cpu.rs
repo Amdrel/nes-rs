@@ -31,28 +31,28 @@ pub struct CPU {
     // The value of the program counter can be modified by executing a jump, a
     // relative branch, a subroutine call to another memory address, by
     // returning from a subroutine, or by an interrupt.
-    pc: u16,
+    pub pc: u16,
 
     // The processor supports a 256 byte stack located between $0100 and $01FF.
     // The stack pointer is an 8-bit register and holds the next free location
     // on the stack. The location of the stack is fixed and cannot be moved and
     // grows downwards.
-    sp: u8,
+    pub sp: u8,
 
     // The 8-bit accumulator is used all arithmetic and logical operations (with
     // the exception of increments and decrements). The contents of the
     // accumulator can be stored and retrieved either from memory or the stack.
-    a: u8,
+    pub a: u8,
 
     // The 8-bit X register can be used to control information, compare values
     // in memory, and be incremented or decremented. The X register is special
     // as it can be used to get a copy of the stack pointer or change its value.
-    x: u8,
+    pub x: u8,
 
     // The 8-bit Y register like X, can be used to manage information and be
     // incremented or decremented; however it doesn't have any special functions
     // like the X register does.
-    y: u8,
+    pub y: u8,
 
     // The Processor Status register contains a list of flags that are set and
     // cleared by instructions to record the results of operations. Each flag
@@ -103,18 +103,28 @@ pub struct CPU {
     //
     // The negative flag is set if the result of the last operation had bit 7
     // set to a one.
-    p: u8
+    pub p: u8,
+
+    // The amount of cycles currently accumulated. A cycle represents a unit of
+    // time (the time it takes for the CPU clock to fire). Different
+    // instructions take a different amount of cycles to complete depending on
+    // their complexity.
+    pub cycles: u16
 }
 
 impl CPU {
     pub fn new() -> CPU {
         CPU {
             pc: 0xC000,
-            sp: 0,
+            sp: 0xFD,
             a: 0,
             x: 0,
             y: 0,
-            p: 0
+            p: 0x24,
+            cycles: 0
         }
+    }
+
+    pub fn execute() {
     }
 }
