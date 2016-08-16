@@ -47,18 +47,30 @@ impl Instruction {
         }, len, cycles)
     }
 
+    /// Disassembles the instruction into human readable assembly.
+    pub fn disassemble(&self) -> String {
+        match self.opcode() {
+            Opcode::JMPA => format!("JMP ${:2X}{:2X}", self.2, self.1)
+        }
+    }
+
+    /// Logs a human-readable representation of the instruction along with the
+    /// CPU state in an easy to parse format.
+    ///
+    /// TODO: Return a string for the test suite so CPU correctness can be
+    /// checked.
     pub fn log(&self, cpu: &CPU) {
         // Disassemble the instruction based on the opcode.
-        let disassembled = match self.opcode() {
-            Opcode::JMPA => format!("JMP ${:2X}{:2X}", self.2, self.1)
-        };
+        let disassembled = self.disassemble();
 
-        // TODO: Add CPU state information.
+        // Prints the CPU state in a nice parsable format. In the future this
+        // output will be used for automatically testing the CPU's accuracy.
         println!("{:04X}  {:02X} {:02X} {:02X}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
                  cpu.pc, self.0, self.1, self.2, disassembled, cpu.a, cpu.x,
                  cpu.y, cpu.p, cpu.sp, cpu.cycles);
     }
 
+    /// Obtain the opcode of the instruction.
     #[inline(always)]
     pub fn opcode(&self) -> Opcode {
         use nes::opcode::decode_opcode;
