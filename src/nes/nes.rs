@@ -77,9 +77,11 @@ impl NES {
 
     /// FIXME: Temporary code, please remove at some point!
     pub fn test(&mut self) {
-        let encoded = [0x4C, 0xF5, 0xC5];
-        let (instr, len, cycles) = Instruction::decode(&encoded, false);
+        let encoded = [0x4C, 0xF5, 0xC5]; // Dummy absolute JMP instruction.
+        let (instr, len) = Instruction::decode(&encoded);
+
+        println!("");
         instr.log(&self.cpu);
-        println!("{:?}, len = {}, cycles = {}", instr, len, cycles);
+        println!("\n{:?}, len = {}", instr, len);
     }
 }

@@ -22,20 +22,15 @@ impl Instruction {
     ///
     /// TODO: Add page boundary flag for instructions that need extra cycles to
     /// decode across pages.
-    pub fn decode(instr: &[u8], boundary: bool) -> (Instruction, u8, u16) {
+    pub fn decode(instr: &[u8]) -> (Instruction, u8) {
         use nes::opcode::decode_opcode;
 
         // Determine the length of the instruction based on the opcode.
+        // TODO: Move match to a function.
         let opcode = decode_opcode(instr[0]);
-        let (len, mut cycles, boundary_sensitive) = match opcode {
-            Opcode::JMPA => (3, 3, false)
+        let len = match opcode {
+            Opcode::JMPA => 3
         };
-
-        // Add an additional cycle when page boundaries are crossed while
-        // parsing arguments (only if the opcode is susceptible to it).
-        if boundary_sensitive && boundary {
-            cycles += 1;
-        }
 
         // Return the instruction with it's arguments filled along with the
         // amount of cycles it will take for it to execute.
@@ -44,7 +39,7 @@ impl Instruction {
             2 => Instruction(instr[0], instr[1], 0),
             3 => Instruction(instr[0], instr[1], instr[2]),
             _ => { panic!("Invalid length calculated"); }
-        }, len, cycles)
+        }, len)
     }
 
     /// Disassembles the instruction into human readable assembly.
@@ -75,5 +70,9 @@ impl Instruction {
     pub fn opcode(&self) -> Opcode {
         use nes::opcode::decode_opcode;
         decode_opcode(self.0)
+    }
+
+    /// Executes the instruction based on it's opcode.
+    pub fn execute(&self, cpu: &CPU) {
     }
 }
