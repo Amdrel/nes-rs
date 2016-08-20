@@ -124,7 +124,7 @@ impl Instruction {
             },
             Opcode::LDXI => {
                 cpu.x = self.arg_u8();
-                if cpu.x == 0 { cpu.set_zero(); }
+                if cpu.x == 0 { cpu.set_zero_flag(); }
                 if cpu.x & NEGATIVE_FLAG == NEGATIVE_FLAG { cpu.set_negative_flag(); }
                 cpu.cycles += 2;
                 cpu.pc += len;

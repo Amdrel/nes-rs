@@ -131,13 +131,13 @@ impl CPU {
 
     /// Sets the carry flag in the status register.
     #[inline(always)]
-    pub fn set_carry(&mut self) {
+    pub fn set_carry_flag(&mut self) {
         self.p |= CARRY_FLAG;
     }
 
     /// Sets the zero flag in the status register.
     #[inline(always)]
-    pub fn set_zero(&mut self) {
+    pub fn set_zero_flag(&mut self) {
         self.p |= ZERO_FLAG;
     }
 
