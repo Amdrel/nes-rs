@@ -10,13 +10,13 @@ use nes::instruction::Instruction;
 use nes::memory::Memory;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
-const CARRY_FLAG       : u8 = 0x1;
-const ZERO_FLAG        : u8 = 0x2;
-const INTERRUPT_DISABLE: u8 = 0x4;
-const DECIMAL_MODE     : u8 = 0x8;
-const BREAK_COMMAND    : u8 = 0x10;
-const OVERFLOW_FLAG    : u8 = 0x40;
-const NEGATIVE_FLAG    : u8 = 0x80;
+pub const CARRY_FLAG       : u8 = 0x1;
+pub const ZERO_FLAG        : u8 = 0x2;
+pub const INTERRUPT_DISABLE: u8 = 0x4;
+pub const DECIMAL_MODE     : u8 = 0x8;
+pub const BREAK_COMMAND    : u8 = 0x10;
+pub const OVERFLOW_FLAG    : u8 = 0x40;
+pub const NEGATIVE_FLAG    : u8 = 0x80;
 
 /// This is an implementation of 2A03 processor used in the NES. The 2A03 is
 /// based off the 6502 processor with some minor changes such as having no
@@ -26,6 +26,7 @@ const NEGATIVE_FLAG    : u8 = 0x80;
 /// Much of the information and comments are due credit to www.obelisk.me.uk,
 /// which has really good information about the 6502 processor. If you're
 /// interested in diving further, I recommend you give that site a visit.
+#[derive(Debug)]
 pub struct CPU {
     // The program counter is a 16-bit register which points to the next
     // instruction to be executed. The value of program counter is modified
@@ -128,10 +129,52 @@ impl CPU {
         }
     }
 
+    /// Sets the carry flag in the status register.
+    #[inline(always)]
+    pub fn set_carry(&mut self) {
+        self.p |= CARRY_FLAG;
+    }
+
+    /// Sets the zero flag in the status register.
+    #[inline(always)]
+    pub fn set_zero(&mut self) {
+        self.p |= ZERO_FLAG;
+    }
+
+    /// Sets the interrupt disable flag in the status register.
+    #[inline(always)]
+    pub fn set_interrupt_disable(&mut self) {
+        self.p |= INTERRUPT_DISABLE;
+    }
+
+    /// Sets the decimal mode flag in the status register.
+    /// NOTE: This flag is disabled in the 2A03 variation of the 6502.
+    #[inline(always)]
+    pub fn set_decimal_mode(&mut self) {
+        self.p |= DECIMAL_MODE;
+    }
+
+    /// Sets the break command flag in the status register.
+    #[inline(always)]
+    pub fn set_break_command(&mut self) {
+        self.p |= BREAK_COMMAND;
+    }
+
+    /// Sets the overflow flag in the status register.
+    #[inline(always)]
+    pub fn set_overflow_flag(&mut self) {
+        self.p |= OVERFLOW_FLAG;
+    }
+
+    /// Sets the negative flag in the status register.
+    #[inline(always)]
+    pub fn set_negative_flag(&mut self) {
+        self.p |= NEGATIVE_FLAG;
+    }
+
+    /// Parse an instruction from memory at the address the program counter
+    /// currently points execute it. All instruction logic is in instruction.rs.
     pub fn execute(&mut self, memory: &mut Memory) {
-        // Parse the instruction from memory based on the length of the opcode
-        // and execute it. All instruction logic is in instruction.rs.
-        //
         // NOTE: At this time, some parsing logic is done twice for the sake of
         // code simplicity. In the future I may rework the function arguments to
         // reuse as much data as possible since this is high-performance code.

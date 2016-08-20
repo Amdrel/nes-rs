@@ -8,6 +8,8 @@
 
 use io::binutils::INESHeader;
 use nes::cpu::CPU;
+use std::panic;
+
 use nes::memory::{
     Memory,
     TRAINER_START,
@@ -71,9 +73,24 @@ impl NES {
     }
 
     /// Starts the execution loop and starts executing PRG-ROM.
-    pub fn run(&mut self) {
-        loop {
-            self.cpu.execute(&mut self.memory);
+    pub fn run(&mut self) -> i32 {
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            loop {
+                self.cpu.execute(&mut self.memory);
+            }
+        }));
+
+        // Log crash information if the execution loop panicked. If there was no
+        // panic, return a success exit code and call it quits.
+        match result {
+            Ok(_) => {
+                println!("Shutting down...");
+                0 // Success exit code.
+            },
+            Err(_) => {
+                println!("CPU Crash State: {:?}", self.cpu);
+                101 // Runtime failure exit code.
+            }
         }
     }
 }

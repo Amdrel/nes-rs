@@ -109,9 +109,7 @@ fn init() -> i32 {
     };
 
     let mut nes = NES::new(header, rom);
-    nes.run();
-
-    EXIT_SUCCESS
+    nes.run()
 }
 
 /// Entry point of the program and wrapper of init. Takes the exit code returned

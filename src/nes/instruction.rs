@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use nes::cpu::CPU;
+use nes::cpu::{CPU, NEGATIVE_FLAG};
 use nes::memory::Memory;
 use nes::opcode::Opcode;
 use std::io::Cursor;
@@ -45,7 +45,8 @@ impl Instruction {
     /// Disassembles the instruction into human readable assembly.
     pub fn disassemble(&self) -> String {
         match self.opcode() {
-            Opcode::JMPA => format!("JMP ${:2X}{:2X}", self.2, self.1)
+            Opcode::JMPA => format!("JMP ${:02X}{:02X}", self.2, self.1),
+            Opcode::LDXI => format!("LDX #${:02X}", self.1),
         }
     }
 
@@ -56,6 +57,23 @@ impl Instruction {
     /// checked. Also it may be more appropriate to move this function into the
     /// CPU.
     pub fn log(&self, cpu: &CPU) {
+        use nes::opcode::opcode_len;
+        let opcode = self.opcode();
+        let len = opcode_len(&opcode) as u16;
+
+        // Get human readable hex of the instruction bytes. A pattern match is
+        // used as bytes that do not exist in an instruction should not be
+        // displayed (rather than displaying the default struct value 0).
+        let instr_str = match len {
+            1 => format!("{:02X}      ", self.0),
+            2 => format!("{:02X} {:02X}   ", self.0, self.1),
+            3 => format!("{:02X} {:02X} {:02X}", self.0, self.1, self.2),
+            _ => { panic!("Invalid instruction length given"); }
+        };
+
+        // Disassemble the instruction to a human readable format for the log.
+        let disassembled = self.disassemble();
+
         // Prints the CPU state and disassembled instruction in a nice parsable
         // format. In the future this output will be used for automatically
         // testing the CPU's accuracy.
@@ -63,10 +81,9 @@ impl Instruction {
         // NOTE: CYC is not cycles like the name sugests, but PPU dots. The PPU
         // can output 3 dots every CPU cycle on NTSC (PAL outputs an extra dot
         // every fifth CPU cycle).
-        let disassembled = self.disassemble();
-        println!("{:04X}  {:02X} {:02X} {:02X}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
-                 cpu.pc, self.0, self.1, self.2, disassembled, cpu.a, cpu.x,
-                 cpu.y, cpu.p, cpu.sp, 0);
+        println!("{:04X}  {}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
+                 cpu.pc, instr_str, disassembled, cpu.a, cpu.x, cpu.y, cpu.p,
+                 cpu.sp, 0);
     }
 
     /// Obtain the opcode of the instruction.
@@ -90,14 +107,28 @@ impl Instruction {
     }
 
     /// Execute the instruction with a routine that corresponds with it's
-    /// opcode.
+    /// opcode. All routines for every instruction in the 6502 instruction set
+    /// are present here.
     #[inline(always)]
     pub fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        match self.opcode() {
+        use nes::opcode::opcode_len;
+
+        let opcode = self.opcode();
+        let len = opcode_len(&opcode) as u16;
+
+        // Execute the internal logic of the instruction based on it's opcode.
+        match opcode {
             Opcode::JMPA => {
                 cpu.pc = self.arg_u16();
                 cpu.cycles += 3;
-            }
+            },
+            Opcode::LDXI => {
+                cpu.x = self.arg_u8();
+                if cpu.x == 0 { cpu.set_zero(); }
+                if cpu.x & NEGATIVE_FLAG == NEGATIVE_FLAG { cpu.set_negative_flag(); }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
         };
     }
 }

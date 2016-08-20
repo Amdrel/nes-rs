@@ -11,7 +11,8 @@ use num::FromPrimitive;
 enum_from_primitive! {
     #[derive(Debug)]
     pub enum Opcode {
-        JMPA = 0x4C
+        JMPA = 0x4C,
+        LDXI = 0xA2,
     }
 }
 
@@ -26,6 +27,7 @@ pub fn decode_opcode(opcode: u8) -> Opcode {
 /// Determine the length of an instruction with the given opcode.
 pub fn opcode_len(opcode: &Opcode) -> u8 {
     match *opcode {
-        Opcode::JMPA => 3
+        Opcode::JMPA => 3,
+        Opcode::LDXI => 2,
     }
 }
