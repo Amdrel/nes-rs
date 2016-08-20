@@ -8,7 +8,6 @@
 
 use io::binutils::INESHeader;
 use nes::cpu::CPU;
-use nes::instruction::Instruction;
 use nes::memory::{
     Memory,
     TRAINER_START,
@@ -21,8 +20,8 @@ use nes::memory::{
 /// The NES struct owns all hardware peripherals and lends them when needed.
 pub struct NES {
     header: INESHeader,
-    cpu: CPU,
-    memory: Memory
+    pub cpu: CPU,
+    pub memory: Memory
 }
 
 impl NES {
@@ -72,16 +71,9 @@ impl NES {
     }
 
     /// Starts the execution loop and starts executing PRG-ROM.
-    pub fn execute() {
-    }
-
-    /// FIXME: Temporary code, please remove at some point!
-    pub fn test(&mut self) {
-        let encoded = [0x4C, 0xF5, 0xC5]; // Dummy absolute JMP instruction.
-        let (instr, len) = Instruction::decode(&encoded);
-
-        println!("");
-        instr.log(&self.cpu);
-        println!("\n{:?}, len = {}", instr, len);
+    pub fn run(&mut self) {
+        loop {
+            self.cpu.execute(&mut self.memory);
+        }
     }
 }

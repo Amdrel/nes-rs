@@ -6,40 +6,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use byteorder::{LittleEndian, ReadBytesExt};
 use nes::cpu::CPU;
+use nes::memory::Memory;
 use nes::opcode::Opcode;
-use num::FromPrimitive;
+use std::io::Cursor;
 
 /// All 6502 instructions are a maximum size of 3 bytes. The first byte is the
 /// opcode which is determines the action of the instruction. The following 2
 /// bytes are the arguments and are present depending on the opcode.
 #[derive(Debug)]
-pub struct Instruction(u8, u8, u8);
+pub struct Instruction(pub u8, pub u8, pub u8);
 
 impl Instruction {
-    /// The decoder will store all bytes in the instruction regardless if they
-    /// are needed or not.
-    ///
-    /// TODO: Add page boundary flag for instructions that need extra cycles to
-    /// decode across pages.
-    pub fn decode(instr: &[u8]) -> (Instruction, u8) {
+    /// Parses an instruction from memory at the address of the passed program
+    /// counter. Some instructions when parsed by the original 6502 will read
+    /// arguments from the wrong addresses (e.g indirect JMP), so those bugs are
+    /// emulated accurately here.
+    pub fn parse(pc: usize, memory: &mut Memory) -> Instruction {
         use nes::opcode::decode_opcode;
+        use nes::opcode::opcode_len;
 
-        // Determine the length of the instruction based on the opcode.
-        // TODO: Move match to a function.
-        let opcode = decode_opcode(instr[0]);
-        let len = match opcode {
-            Opcode::JMPA => 3
-        };
+        let raw_opcode = memory.read_u8(pc);
+        let opcode = decode_opcode(raw_opcode);
+        let len = opcode_len(&opcode);
 
-        // Return the instruction with it's arguments filled along with the
-        // amount of cycles it will take for it to execute.
-        (match len {
-            1 => Instruction(instr[0], 0, 0),
-            2 => Instruction(instr[0], instr[1], 0),
-            3 => Instruction(instr[0], instr[1], instr[2]),
-            _ => { panic!("Invalid length calculated"); }
-        }, len)
+        // TODO: Check for indirect JMP to emulate page boundary bug.
+
+        match len {
+            1 => Instruction(raw_opcode, 0, 0),
+            2 => Instruction(raw_opcode, memory.read_u8(pc + 1), 0),
+            3 => Instruction(raw_opcode, memory.read_u8(pc + 1),
+                memory.read_u8(pc + 2)),
+            _ => { panic!("Invalid instruction length returned") }
+        }
     }
 
     /// Disassembles the instruction into human readable assembly.
@@ -53,16 +53,20 @@ impl Instruction {
     /// CPU state in an easy to parse format.
     ///
     /// TODO: Return a string for the test suite so CPU correctness can be
-    /// checked.
+    /// checked. Also it may be more appropriate to move this function into the
+    /// CPU.
     pub fn log(&self, cpu: &CPU) {
-        // Disassemble the instruction based on the opcode.
+        // Prints the CPU state and disassembled instruction in a nice parsable
+        // format. In the future this output will be used for automatically
+        // testing the CPU's accuracy.
+        //
+        // NOTE: CYC is not cycles like the name sugests, but PPU dots. The PPU
+        // can output 3 dots every CPU cycle on NTSC (PAL outputs an extra dot
+        // every fifth CPU cycle).
         let disassembled = self.disassemble();
-
-        // Prints the CPU state in a nice parsable format. In the future this
-        // output will be used for automatically testing the CPU's accuracy.
         println!("{:04X}  {:02X} {:02X} {:02X}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
                  cpu.pc, self.0, self.1, self.2, disassembled, cpu.a, cpu.x,
-                 cpu.y, cpu.p, cpu.sp, cpu.cycles);
+                 cpu.y, cpu.p, cpu.sp, 0);
     }
 
     /// Obtain the opcode of the instruction.
@@ -72,7 +76,28 @@ impl Instruction {
         decode_opcode(self.0)
     }
 
-    /// Executes the instruction based on it's opcode.
-    pub fn execute(&self, cpu: &CPU) {
+    /// Read the instruction argument as an 8-bit value.
+    #[inline(always)]
+    pub fn arg_u8(&self) -> u8 {
+        self.1
+    }
+
+    /// Read the instruction argument as a 16-bit value.
+    #[inline(always)]
+    pub fn arg_u16(&self) -> u16 {
+        let mut reader = Cursor::new(vec![self.1, self.2]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Execute the instruction with a routine that corresponds with it's
+    /// opcode.
+    #[inline(always)]
+    pub fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
+        match self.opcode() {
+            Opcode::JMPA => {
+                cpu.pc = self.arg_u16();
+                cpu.cycles += 3;
+            }
+        };
     }
 }

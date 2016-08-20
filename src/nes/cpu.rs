@@ -6,6 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use nes::instruction::Instruction;
+use nes::memory::Memory;
+
 // Flag constants that allow easy bitwise getting and setting of flag values.
 const CARRY_FLAG       : u8 = 0x1;
 const ZERO_FLAG        : u8 = 0x2;
@@ -125,6 +128,15 @@ impl CPU {
         }
     }
 
-    pub fn execute() {
+    pub fn execute(&mut self, memory: &mut Memory) {
+        // Parse the instruction from memory based on the length of the opcode
+        // and execute it. All instruction logic is in instruction.rs.
+        //
+        // NOTE: At this time, some parsing logic is done twice for the sake of
+        // code simplicity. In the future I may rework the function arguments to
+        // reuse as much data as possible since this is high-performance code.
+        let instr = Instruction::parse(self.pc as usize, memory);
+        instr.log(self);
+        instr.execute(self, memory);
     }
 }

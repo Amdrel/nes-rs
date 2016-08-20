@@ -109,7 +109,7 @@ fn init() -> i32 {
     };
 
     let mut nes = NES::new(header, rom);
-    nes.test();
+    nes.run();
 
     EXIT_SUCCESS
 }

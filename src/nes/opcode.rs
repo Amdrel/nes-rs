@@ -19,6 +19,13 @@ enum_from_primitive! {
 pub fn decode_opcode(opcode: u8) -> Opcode {
     match Opcode::from_u8(opcode) {
         Some(opcode) => opcode,
-        None => { panic!("Unknown opcode detected: {:#X}", opcode); }
+        None => { panic!("Unimplemented opcode detected: {:2X}", opcode); }
+    }
+}
+
+/// Determine the length of an instruction with the given opcode.
+pub fn opcode_len(opcode: &Opcode) -> u8 {
+    match *opcode {
+        Opcode::JMPA => 3
     }
 }
