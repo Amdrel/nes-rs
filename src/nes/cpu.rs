@@ -8,6 +8,7 @@
 
 use nes::instruction::Instruction;
 use nes::memory::Memory;
+use std::fmt;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
 pub const CARRY_FLAG       : u8 = 0x1;
@@ -172,6 +173,49 @@ impl CPU {
         self.p |= NEGATIVE_FLAG;
     }
 
+    /// Sets the carry flag in the status register.
+    #[inline(always)]
+    pub fn carry_flag_set(&self) -> bool {
+        self.p & CARRY_FLAG == CARRY_FLAG
+    }
+
+    /// Sets the zero flag in the status register.
+    #[inline(always)]
+    pub fn zero_flag_set(&self) -> bool {
+        self.p & ZERO_FLAG == ZERO_FLAG
+    }
+
+    /// Sets the interrupt disable flag in the status register.
+    #[inline(always)]
+    pub fn interrupt_disable_set(&self) -> bool {
+        self.p & INTERRUPT_DISABLE == INTERRUPT_DISABLE
+    }
+
+    /// Sets the decimal mode flag in the status register.
+    /// NOTE: This flag is disabled in the 2A03 variation of the 6502.
+    #[inline(always)]
+    pub fn decimal_mode_set(&self) -> bool {
+        self.p & DECIMAL_MODE == DECIMAL_MODE
+    }
+
+    /// Sets the break command flag in the status register.
+    #[inline(always)]
+    pub fn break_command_set(&self) -> bool {
+        self.p & BREAK_COMMAND == BREAK_COMMAND
+    }
+
+    /// Sets the overflow flag in the status register.
+    #[inline(always)]
+    pub fn overflow_flag_set(&self) -> bool {
+        self.p & OVERFLOW_FLAG == OVERFLOW_FLAG
+    }
+
+    /// Sets the negative flag in the status register.
+    #[inline(always)]
+    pub fn negative_flag_set(&self) -> bool {
+        self.p & NEGATIVE_FLAG == NEGATIVE_FLAG
+    }
+
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
     pub fn execute(&mut self, memory: &mut Memory) {
@@ -181,5 +225,29 @@ impl CPU {
         let instr = Instruction::parse(self.pc as usize, memory);
         instr.log(self);
         instr.execute(self, memory);
+    }
+
+    fn fmt_flag(&self, flag: bool) -> &'static str {
+        if flag { "SET" } else { "UNSET" }
+    }
+}
+
+impl fmt::Display for CPU {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\nCPU Crash State:").unwrap();
+        writeln!(f, "    Program Counter: {:#X}", self.pc).unwrap();
+        writeln!(f, "    Stack Pointer:   {:#X}", self.sp).unwrap();
+        writeln!(f, "    Accumulator:     {:#X}", self.a).unwrap();
+        writeln!(f, "    X Register:      {:#X}", self.x).unwrap();
+        writeln!(f, "    Y Register:      {:#X}", self.y).unwrap();
+        writeln!(f, "").unwrap();
+        writeln!(f, "Status Register: {:#X}", self.p).unwrap();
+        writeln!(f, "    Carry Flag:        {}", self.fmt_flag(self.carry_flag_set())).unwrap();
+        writeln!(f, "    Zero Flag:         {}", self.fmt_flag(self.zero_flag_set())).unwrap();
+        writeln!(f, "    Interrupt Disable: {}", self.fmt_flag(self.interrupt_disable_set())).unwrap();
+        writeln!(f, "    Decimal Mode:      {}", self.fmt_flag(self.decimal_mode_set())).unwrap();
+        writeln!(f, "    Break Command:     {}", self.fmt_flag(self.break_command_set())).unwrap();
+        writeln!(f, "    Overflow Flag:     {}", self.fmt_flag(self.overflow_flag_set())).unwrap();
+        writeln!(f, "    Negative Flag:     {}", self.fmt_flag(self.negative_flag_set()))
     }
 }

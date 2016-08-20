@@ -9,6 +9,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use nes::cpu::{CPU, NEGATIVE_FLAG};
 use nes::memory::Memory;
+use nes::opcode::Opcode::*;
 use nes::opcode::Opcode;
 use std::io::Cursor;
 
@@ -45,8 +46,8 @@ impl Instruction {
     /// Disassembles the instruction into human readable assembly.
     pub fn disassemble(&self) -> String {
         match self.opcode() {
-            Opcode::JMPA => format!("JMP ${:02X}{:02X}", self.2, self.1),
-            Opcode::LDXI => format!("LDX #${:02X}", self.1),
+            JMPA => format!("JMP ${:02X}{:02X}", self.2, self.1),
+            LDXI => format!("LDX #${:02X}", self.1),
         }
     }
 
@@ -118,11 +119,11 @@ impl Instruction {
 
         // Execute the internal logic of the instruction based on it's opcode.
         match opcode {
-            Opcode::JMPA => {
+            JMPA => {
                 cpu.pc = self.arg_u16();
                 cpu.cycles += 3;
             },
-            Opcode::LDXI => {
+            LDXI => {
                 cpu.x = self.arg_u8();
                 if cpu.x == 0 { cpu.set_zero_flag(); }
                 if cpu.x & NEGATIVE_FLAG == NEGATIVE_FLAG { cpu.set_negative_flag(); }

@@ -26,8 +26,10 @@ pub fn decode_opcode(opcode: u8) -> Opcode {
 
 /// Determine the length of an instruction with the given opcode.
 pub fn opcode_len(opcode: &Opcode) -> u8 {
+    use self::Opcode::*;
+
     match *opcode {
-        Opcode::JMPA => 3,
-        Opcode::LDXI => 2,
+        JMPA => 3,
+        LDXI => 2,
     }
 }

@@ -88,7 +88,7 @@ impl NES {
                 0 // Success exit code.
             },
             Err(_) => {
-                println!("CPU Crash State: {:?}", self.cpu);
+                println!("{}", self.cpu);
                 101 // Runtime failure exit code.
             }
         }
