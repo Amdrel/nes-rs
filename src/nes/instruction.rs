@@ -45,9 +45,11 @@ impl Instruction {
 
     /// Disassembles the instruction into human readable assembly.
     pub fn disassemble(&self) -> String {
-        match self.opcode() {
+        let opcode = self.opcode();
+        match opcode {
             JMPA => format!("JMP ${:02X}{:02X}", self.2, self.1),
             LDXI => format!("LDX #${:02X}", self.1),
+            _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
     }
 
@@ -130,6 +132,7 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         };
     }
 }
