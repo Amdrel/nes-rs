@@ -47,8 +47,8 @@ impl Instruction {
     pub fn disassemble(&self) -> String {
         let opcode = self.opcode();
         match opcode {
-            JMPA => format!("JMP ${:02X}{:02X}", self.2, self.1),
-            LDXI => format!("LDX #${:02X}", self.1),
+            JMPAbs => format!("JMP ${:02X}{:02X}", self.2, self.1),
+            LDXImm => format!("LDX #${:02X}", self.1),
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
     }
@@ -121,11 +121,11 @@ impl Instruction {
 
         // Execute the internal logic of the instruction based on it's opcode.
         match opcode {
-            JMPA => {
+            JMPAbs => {
                 cpu.pc = self.arg_u16();
                 cpu.cycles += 3;
             },
-            LDXI => {
+            LDXImm => {
                 cpu.x = self.arg_u8();
                 if cpu.x == 0 { cpu.set_zero_flag(); }
                 if cpu.x & NEGATIVE_FLAG == NEGATIVE_FLAG { cpu.set_negative_flag(); }
