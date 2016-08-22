@@ -86,12 +86,14 @@ impl Memory {
     }
 
     /// Reads an unsigned 8-bit byte value located at the given virtual address.
+    #[inline(always)]
     pub fn read_u8(&mut self, addr: usize) -> u8 {
         let (bank, idx) = self.map(addr);
         bank[idx]
     }
 
     /// Writes an unsigned 8-bit byte value to the given virtual address.
+    #[inline(always)]
     pub fn write_u8(&mut self, addr: usize, val: u8) {
         let (bank, idx) = self.map(addr);
         bank[idx] = val;
@@ -99,6 +101,7 @@ impl Memory {
 
     /// Reads an unsigned 16-bit byte value at the given virtual address
     /// (little-endian).
+    #[inline(always)]
     pub fn read_u16(&mut self, addr: usize) -> u16 {
         // Reads two bytes starting at the given address and parses them.
         let mut reader = Cursor::new(vec![
@@ -110,11 +113,20 @@ impl Memory {
 
     /// Writes an unsigned 16-bit byte value to the given virtual address
     /// (little-endian)
+    #[inline(always)]
     pub fn write_u16(&mut self, addr: usize, val: u16) {
         let mut writer = vec![];
         writer.write_u16::<LittleEndian>(val).unwrap();
         self.write_u8(addr, writer[0]);
         self.write_u8(addr + 1, writer[1]);
+    }
+
+    /// Returns the page index of the given address. Each memory page for the
+    /// 6502 is 256 (FF) bytes in size and is relevant because some instructions
+    /// need extra cycles to use addresses in different pages.
+    #[inline(always)]
+    pub fn page(&self, addr: usize) -> u8 {
+        (addr as u16 >> 8) as u8
     }
 
     /// Dumps the contents of a slice starting at a given address.

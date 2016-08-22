@@ -89,26 +89,6 @@ impl Instruction {
                  cpu.sp, 0);
     }
 
-    /// Obtain the opcode of the instruction.
-    #[inline(always)]
-    pub fn opcode(&self) -> Opcode {
-        use nes::opcode::decode_opcode;
-        decode_opcode(self.0)
-    }
-
-    /// Read the instruction argument as an 8-bit value.
-    #[inline(always)]
-    pub fn arg_u8(&self) -> u8 {
-        self.1
-    }
-
-    /// Read the instruction argument as a 16-bit value.
-    #[inline(always)]
-    pub fn arg_u16(&self) -> u16 {
-        let mut reader = Cursor::new(vec![self.1, self.2]);
-        reader.read_u16::<LittleEndian>().unwrap()
-    }
-
     /// Execute the instruction with a routine that corresponds with it's
     /// opcode. All routines for every instruction in the 6502 instruction set
     /// are present here.
@@ -134,5 +114,114 @@ impl Instruction {
             },
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         };
+    }
+
+    /// Obtain the opcode of the instruction.
+    #[inline(always)]
+    fn opcode(&self) -> Opcode {
+        use nes::opcode::decode_opcode;
+        decode_opcode(self.0)
+    }
+
+    /// Read the instruction argument as an 8-bit value.
+    #[inline(always)]
+    fn arg_u8(&self) -> u8 {
+        self.1
+    }
+
+    /// Read the instruction argument as a 16-bit value.
+    #[inline(always)]
+    fn arg_u16(&self) -> u16 {
+        let mut reader = Cursor::new(vec![self.1, self.2]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Accumulator addressing simply gets values from the accumulator register
+    /// rather than from the instruction.
+    #[inline(always)]
+    fn accumulator(&self, cpu: &CPU) -> u8 {
+        cpu.a
+    }
+
+    /// Directly return the argument. Immediate addressing simply stores the
+    /// value in the argument unlike other addressing modes which typically use
+    /// this space for memory addresses.
+    #[inline(always)]
+    fn immediate(&self) -> u8 {
+        self.arg_u8()
+    }
+
+    /// Returns an address from the instruction arguments that's between
+    /// $00-$FF. This is used for zero page addressing which is typically faster
+    /// than it's counterpart absolute addressing.
+    #[inline(always)]
+    fn zero_page(&self, memory: &mut Memory) -> usize {
+        self.arg_u8() as usize
+    }
+
+    /// Returns a zero page address stored in the instruction with the X
+    /// register added to it.
+    #[inline(always)]
+    fn zero_page_x(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+        self.arg_u8().wrapping_add(cpu.x) as usize
+    }
+
+    /// Returns a zero page address stored in the instruction with the Y
+    /// register added to it.
+    #[inline(always)]
+    fn zero_page_y(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+        self.arg_u8().wrapping_add(cpu.y) as usize
+    }
+
+    /// Returns a signed variation of the 8-bit argument. Relative addressing is
+    /// used for branch operations and uses a signed integer containing an
+    /// offset of bytes of where to place the program counter.
+    #[inline(always)]
+    fn relative(&self) -> i8 {
+        self.arg_u8() as i8
+    }
+
+    /// Returns an address from the instruction argument unaltered.
+    #[inline(always)]
+    fn absolute(&self) -> usize {
+        self.arg_u16() as usize
+    }
+
+    /// Returns an address from the instruction argument with the value in the X
+    /// register added to it.
+    #[inline(always)]
+    fn absolute_x(&self, cpu: &CPU) -> usize {
+        self.arg_u16().wrapping_add(cpu.x as u16) as usize
+    }
+
+    /// Returns an address from the instruction argument with the value in the Y
+    /// register added to it.
+    #[inline(always)]
+    fn absolute_y(&self, cpu: &CPU) -> usize {
+        self.arg_u16().wrapping_add(cpu.y as u16) as usize
+    }
+
+    /// Indirect addressing uses an absolute address to lookup another address.
+    #[inline(always)]
+    fn indirect(&self, memory: &mut Memory) -> usize {
+        let arg = self.arg_u16() as usize;
+        memory.read_u16(arg) as usize
+    }
+
+    /// Calculates a memory address using by adding X to the 8-bit value in the
+    /// instruction, THEN use that address to find ANOTHER address, then return
+    /// THAT address.
+    #[inline(always)]
+    fn indirect_x(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+        let addr = self.arg_u8().wrapping_add(cpu.x) as usize;
+        memory.read_u16(addr) as usize
+    }
+
+    /// Sane version of indirect_x that gets the zero page address in the
+    /// instruction, adds Y to it, then returns the resulting address.
+    #[inline(always)]
+    fn indirect_y(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+        let arg = self.arg_u8() as usize;
+        memory.read_u16(arg).wrapping_add(cpu.y as u16) as usize
     }
 }
