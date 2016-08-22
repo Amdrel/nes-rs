@@ -173,6 +173,49 @@ impl CPU {
         self.p |= NEGATIVE_FLAG;
     }
 
+    /// Unsets the carry flag in the status register.
+    #[inline(always)]
+    pub fn unset_carry_flag(&mut self) {
+        self.p &= ~CARRY_FLAG;
+    }
+
+    /// Unsets the zero flag in the status register.
+    #[inline(always)]
+    pub fn unset_zero_flag(&mut self) {
+        self.p &= ~ZERO_FLAG;
+    }
+
+    /// Unsets the interrupt disable flag in the status register.
+    #[inline(always)]
+    pub fn unset_interrupt_disable(&mut self) {
+        self.p &= ~INTERRUPT_DISABLE;
+    }
+
+    /// Unsets the decimal mode flag in the status register.
+    /// NOTE: This flag is disabled in the 2A03 variation of the 6502.
+    #[inline(always)]
+    pub fn unset_decimal_mode(&mut self) {
+        self.p &= ~DECIMAL_MODE;
+    }
+
+    /// Unsets the break command flag in the status register.
+    #[inline(always)]
+    pub fn unset_break_command(&mut self) {
+        self.p &= ~BREAK_COMMAND;
+    }
+
+    /// Unsets the overflow flag in the status register.
+    #[inline(always)]
+    pub fn unset_overflow_flag(&mut self) {
+        self.p &= ~OVERFLOW_FLAG;
+    }
+
+    /// Unsets the negative flag in the status register.
+    #[inline(always)]
+    pub fn unset_negative_flag(&mut self) {
+        self.p &= ~NEGATIVE_FLAG;
+    }
+
     /// Sets the carry flag in the status register.
     #[inline(always)]
     pub fn carry_flag_set(&self) -> bool {
