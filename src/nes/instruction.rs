@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use nes::cpu::{CPU, NEGATIVE_FLAG};
+use nes::cpu::CPU;
 use nes::memory::Memory;
 use nes::opcode::Opcode::*;
 use nes::opcode::Opcode;
@@ -44,11 +44,19 @@ impl Instruction {
     }
 
     /// Disassembles the instruction into human readable assembly.
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble(&self, cpu: &CPU, memory: &mut Memory) -> String {
         let opcode = self.opcode();
         match opcode {
-            JMPAbs => format!("JMP ${:02X}{:02X}", self.2, self.1),
-            LDXImm => format!("LDX #${:02X}", self.1),
+            JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
+            JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
+            LDXImm   => format!("LDX #${:02X}", self.1),
+            LDXZero  => format!("LDX ${:02X}", self.1),
+            LDXZeroY => format!("LDX ${:02X},Y", self.1),
+            LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
+            LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
+            STXZero  => format!("STX ${:02X} = {:02X}", self.1, cpu.x),
+            STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, cpu.x),
+            STXAbs   => format!("STX ${:02X}${:02X} = {:02X}", self.2, self.1, cpu.x),
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
     }
@@ -59,7 +67,7 @@ impl Instruction {
     /// TODO: Return a string for the test suite so CPU correctness can be
     /// checked. Also it may be more appropriate to move this function into the
     /// CPU.
-    pub fn log(&self, cpu: &CPU) {
+    pub fn log(&self, cpu: &CPU, memory: &mut Memory) {
         use nes::opcode::opcode_len;
         let opcode = self.opcode();
         let len = opcode_len(&opcode) as u16;
@@ -75,7 +83,7 @@ impl Instruction {
         };
 
         // Disassemble the instruction to a human readable format for the log.
-        let disassembled = self.disassemble();
+        let disassembled = self.disassemble(cpu, memory);
 
         // Prints the CPU state and disassembled instruction in a nice parsable
         // format. In the future this output will be used for automatically
@@ -102,14 +110,85 @@ impl Instruction {
         // Execute the internal logic of the instruction based on it's opcode.
         match opcode {
             JMPAbs => {
-                cpu.pc = self.arg_u16();
+                cpu.pc = self.absolute() as u16;
                 cpu.cycles += 3;
             },
+            JMPInd => {
+                cpu.pc = self.indirect(memory) as u16;
+                cpu.cycles += 5;
+            }
             LDXImm => {
-                cpu.x = self.arg_u8();
-                if cpu.x == 0 { cpu.set_zero_flag(); }
-                if cpu.x & NEGATIVE_FLAG == NEGATIVE_FLAG { cpu.set_negative_flag(); }
+                cpu.x = self.immediate();
+                if cpu.x == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.x) {
+                    cpu.set_negative_flag();
+                }
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            LDXZero => {
+                cpu.x = memory.read_u8(self.zero_page());
+                if cpu.x == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.x) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            LDXZeroY => {
+                cpu.x = memory.read_u8(self.zero_page_y(cpu));
+                if cpu.x == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.x) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDXAbs => {
+                cpu.x = memory.read_u8(self.absolute());
+                if cpu.x == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.x) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDXAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.x = memory.read_u8(addr);
+                if cpu.x == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.x) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            STXZero => {
+                memory.write_u8(self.zero_page(), cpu.x);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            STXZeroY => {
+                memory.write_u8(self.zero_page_y(cpu), cpu.x);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            STXAbs => {
+                memory.write_u8(self.absolute(), cpu.x);
+                cpu.cycles += 4;
                 cpu.pc += len;
             },
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
@@ -136,6 +215,22 @@ impl Instruction {
         reader.read_u16::<LittleEndian>().unwrap()
     }
 
+    /// Dereferences a zero page address in the instruction.
+    #[inline(always)]
+    fn dereference_u8(&self, memory: &mut Memory) -> u8 {
+        memory.read_u8(self.arg_u8() as usize)
+    }
+
+    /// Dereferences a memory address in the instruction.
+    #[inline(always)]
+    fn dereference_u16(&self, memory: &mut Memory) -> u8 {
+        memory.read_u8(self.arg_u16() as usize)
+    }
+
+    // Addressing mode utility functions here. These are used to simplify the
+    // development of instructions and a good explanation of addressing modes
+    // can be found at https://skilldrick.github.io/easy6502/#addressing.
+
     /// Accumulator addressing simply gets values from the accumulator register
     /// rather than from the instruction.
     #[inline(always)]
@@ -155,21 +250,21 @@ impl Instruction {
     /// $00-$FF. This is used for zero page addressing which is typically faster
     /// than it's counterpart absolute addressing.
     #[inline(always)]
-    fn zero_page(&self, memory: &mut Memory) -> usize {
+    fn zero_page(&self) -> usize {
         self.arg_u8() as usize
     }
 
     /// Returns a zero page address stored in the instruction with the X
     /// register added to it.
     #[inline(always)]
-    fn zero_page_x(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+    fn zero_page_x(&self, cpu: &CPU) -> usize {
         self.arg_u8().wrapping_add(cpu.x) as usize
     }
 
     /// Returns a zero page address stored in the instruction with the Y
     /// register added to it.
     #[inline(always)]
-    fn zero_page_y(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+    fn zero_page_y(&self, cpu: &CPU) -> usize {
         self.arg_u8().wrapping_add(cpu.y) as usize
     }
 
@@ -190,15 +285,21 @@ impl Instruction {
     /// Returns an address from the instruction argument with the value in the X
     /// register added to it.
     #[inline(always)]
-    fn absolute_x(&self, cpu: &CPU) -> usize {
-        self.arg_u16().wrapping_add(cpu.x as u16) as usize
+    fn absolute_x(&self, cpu: &CPU) -> (usize, PageCross) {
+        let base_addr = self.arg_u16();
+        let addr = base_addr.wrapping_add(cpu.x as u16) as usize;
+        let page_cross = page_cross(base_addr as usize, addr);
+        (addr, page_cross)
     }
 
     /// Returns an address from the instruction argument with the value in the Y
     /// register added to it.
     #[inline(always)]
-    fn absolute_y(&self, cpu: &CPU) -> usize {
-        self.arg_u16().wrapping_add(cpu.y as u16) as usize
+    fn absolute_y(&self, cpu: &CPU) -> (usize, PageCross) {
+        let base_addr = self.arg_u16();
+        let addr = base_addr.wrapping_add(cpu.y as u16) as usize;
+        let page_cross = page_cross(base_addr as usize, addr);
+        (addr, page_cross)
     }
 
     /// Indirect addressing uses an absolute address to lookup another address.
@@ -223,5 +324,48 @@ impl Instruction {
     fn indirect_y(&self, cpu: &CPU, memory: &mut Memory) -> usize {
         let arg = self.arg_u8() as usize;
         memory.read_u16(arg).wrapping_add(cpu.y as u16) as usize
+    }
+}
+
+#[derive(PartialEq)]
+enum PageCross {
+    Same,
+    Backwards,
+    Forwards,
+}
+
+// Additional utility functions used often in instruction logic.
+
+/// Checks if an unsigned number would be negative if it was signed. This is
+/// done by checking if the 7th bit is set.
+#[inline(always)]
+fn is_negative(arg: u8) -> bool {
+    let negative_bitmask = 0b10000000;
+    arg & negative_bitmask == negative_bitmask
+}
+
+/// Returns the page index of the given address. Each memory page for the
+/// 6502 is 256 (FF) bytes in size and is relevant because some instructions
+/// need extra cycles to use addresses in different pages.
+#[inline(always)]
+fn page(addr: usize) -> u8 {
+    (addr as u16 >> 8) as u8
+}
+
+/// Determine if there was a page cross between the addresses and what
+/// direction was crossed. Most instructions don't care which direction the
+/// page cross was in so those instructions will check for either forwards
+/// or backwards.
+#[inline(always)]
+fn page_cross(addr1: usize, addr2: usize) -> PageCross {
+    let page1 = page(addr1);
+    let page2 = page(addr2);
+
+    if page1 > page2 {
+        PageCross::Backwards
+    } else if page1 < page2 {
+        PageCross::Forwards
+    } else {
+        PageCross::Same
     }
 }

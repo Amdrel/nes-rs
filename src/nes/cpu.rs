@@ -266,7 +266,7 @@ impl CPU {
         // code simplicity. In the future I may rework the function arguments to
         // reuse as much data as possible since this is high-performance code.
         let instr = Instruction::parse(self.pc as usize, memory);
-        instr.log(self);
+        instr.log(self, memory);
         instr.execute(self, memory);
     }
 

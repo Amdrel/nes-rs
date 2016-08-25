@@ -121,14 +121,6 @@ impl Memory {
         self.write_u8(addr + 1, writer[1]);
     }
 
-    /// Returns the page index of the given address. Each memory page for the
-    /// 6502 is 256 (FF) bytes in size and is relevant because some instructions
-    /// need extra cycles to use addresses in different pages.
-    #[inline(always)]
-    pub fn page(&self, addr: usize) -> u8 {
-        (addr as u16 >> 8) as u8
-    }
-
     /// Dumps the contents of a slice starting at a given address.
     pub fn memdump(&mut self, addr: usize, buf: &[u8]) {
         for i in 0..buf.len() {
