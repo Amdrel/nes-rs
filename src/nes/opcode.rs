@@ -9,7 +9,7 @@
 use num::FromPrimitive;
 
 enum_from_primitive! {
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Opcode {
         ADCImm   = 0x69,
         ADCZero  = 0x65,
