@@ -111,6 +111,24 @@ impl Memory {
         reader.read_u16::<LittleEndian>().unwrap()
     }
 
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian) where the MSB is read at page start if the LSB is at
+    /// the end of a page. This exists to properly emulate a hardware bug in the
+    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
+    #[inline(always)]
+    pub fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16 {
+        let lsb = self.read_u8(addr);
+        let msb = if addr & 0xFF == 0xFF {
+            self.read_u8(addr - 0xFF)
+        } else {
+            self.read_u8(addr + 1)
+        };
+
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![lsb, msb]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
     /// Writes an unsigned 16-bit byte value to the given virtual address
     /// (little-endian)
     #[inline(always)]

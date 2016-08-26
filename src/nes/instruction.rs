@@ -32,20 +32,6 @@ impl Instruction {
         let opcode = decode_opcode(raw_opcode);
         let len = opcode_len(&opcode);
 
-        // Check for indirect JMP to emulate a page boundary bug.
-        // https://github.com/Reshurum/nes-rs/issues/3
-        //
-        // If the 16-bit argument of an indirect JMP is located between 2 pages
-        // (0x01FF and 0x0200 for example), then the LSB will be read from
-        // 0x01FF and the MSB will be read from 0x0100. This is an actual
-        // hardware bug in early revisions of the 6502 which happen to be
-        // present in the 2A03 used by the NES.
-        if opcode == JMPInd && (pc + 1) & 0xFF == 0xFF {
-            let bad_addr = (pc + 1) - 0xFF; // Wrap the MSB to page start.
-            return Instruction(raw_opcode, memory.read_u8(pc + 1),
-                               memory.read_u8(bad_addr))
-        }
-
         match len {
             1 => Instruction(raw_opcode, 0, 0),
             2 => Instruction(raw_opcode, memory.read_u8(pc + 1), 0),
@@ -126,7 +112,11 @@ impl Instruction {
                 cpu.cycles += 3;
             },
             JMPInd => {
-                cpu.pc = self.indirect(memory) as u16;
+                // A special version of indirect addressing is implemented here
+                // due to a bug in the indirect JMP operation.
+                // https://github.com/Reshurum/nes-rs/issues/3
+                let arg = self.arg_u16() as usize;
+                cpu.pc = memory.read_u16_wrapped_msb(arg);
                 cpu.cycles += 5;
             }
             LDXImm => {
