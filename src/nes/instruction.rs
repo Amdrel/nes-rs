@@ -50,6 +50,7 @@ impl Instruction {
 
         match opcode {
             BCSRel   => format!("BCS ${:04X}", cpu.pc + self.1 as u16 + len as u16),
+            CLCImp   => format!("CLC"),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -118,13 +119,19 @@ impl Instruction {
             BCSRel => {
                 if cpu.carry_flag_set() {
                     let old_pc = cpu.pc as usize;
-                    cpu.pc = cpu.pc.wrapping_add(self.relative() as u16) + len;
+                    cpu.pc = cpu.pc.wrapping_add(self.relative() as u16);
                     cpu.cycles += 1;
                     if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CLCImp => {
+                cpu.unset_carry_flag();
+                cpu.cycles += 2;
+                cpu.pc += len;
             },
             JMPAbs => {
                 cpu.pc = self.absolute() as u16;
