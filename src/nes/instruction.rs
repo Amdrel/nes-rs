@@ -47,11 +47,14 @@ impl Instruction {
         match opcode {
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
+            JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
             LDXImm   => format!("LDX #${:02X}", self.1),
             LDXZero  => format!("LDX ${:02X}", self.1),
             LDXZeroY => format!("LDX ${:02X},Y", self.1),
             LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
             LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
+            NOPImp   => format!("NOP"),
+            SECImp   => format!("SEC"),
             STXZero  => format!("STX ${:02X} = {:02X}", self.1, cpu.x),
             STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, cpu.x),
             STXAbs   => format!("STX ${:02X}${:02X} = {:02X}", self.2, self.1, cpu.x),
@@ -118,7 +121,13 @@ impl Instruction {
                 let arg = self.arg_u16() as usize;
                 cpu.pc = memory.read_u16_wrapped_msb(arg);
                 cpu.cycles += 5;
-            }
+            },
+            JSRAbs => {
+                let addr = self.absolute() as u16;
+                memory.stack_push_u16(cpu, addr - 1);
+                cpu.pc = addr;
+                cpu.cycles += 6;
+            },
             LDXImm => {
                 cpu.x = self.immediate();
                 if cpu.x == 0 {
@@ -176,6 +185,16 @@ impl Instruction {
                     cpu.set_negative_flag();
                 }
                 cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            NOPImp => {
+                // This is the most difficult instruction to implement.
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            SECImp => {
+                cpu.set_carry_flag();
+                cpu.cycles += 2;
                 cpu.pc += len;
             },
             STXZero => {
