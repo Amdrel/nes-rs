@@ -51,6 +51,9 @@ impl Instruction {
         match opcode {
             BCSRel   => format!("BCS ${:04X}", cpu.pc + self.1 as u16 + len as u16),
             CLCImp   => format!("CLC"),
+            CLDImp   => format!("CLD"),
+            CLIImp   => format!("CLI"),
+            CLVImp   => format!("CLV"),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -61,6 +64,8 @@ impl Instruction {
             LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
             NOPImp   => format!("NOP"),
             SECImp   => format!("SEC"),
+            SEDImp   => format!("SED"),
+            SEIImp   => format!("SEI"),
             STXZero  => format!("STX ${:02X} = {:02X}", self.1, cpu.x),
             STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, cpu.x),
             STXAbs   => format!("STX ${:02X}${:02X} = {:02X}", self.2, self.1, cpu.x),
@@ -130,6 +135,21 @@ impl Instruction {
             },
             CLCImp => {
                 cpu.unset_carry_flag();
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CLDImp => {
+                cpu.unset_decimal_mode();
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CLIImp => {
+                cpu.unset_interrupt_disable();
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CLVImp => {
+                cpu.unset_overflow_flag();
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
@@ -217,6 +237,16 @@ impl Instruction {
             },
             SECImp => {
                 cpu.set_carry_flag();
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            SEDImp => {
+                cpu.set_decimal_mode();
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            SEIImp => {
+                cpu.set_interrupt_disable();
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
