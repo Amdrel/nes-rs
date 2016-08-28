@@ -151,14 +151,14 @@ impl Memory {
 
     /// Pushes a 16-bit number (usually an address) onto the stack.
     pub fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16) {
-        self.write_u16(cpu.sp as usize, value);
+        self.write_u16(0x100 + cpu.sp as usize, value);
         cpu.sp = cpu.sp.wrapping_sub(2);
     }
 
     /// Pops a 16-bit number (usually an address) off the stack.
     pub fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
         cpu.sp = cpu.sp.wrapping_add(2);
-        self.read_u16(cpu.sp as usize)
+        self.read_u16(0x100 + cpu.sp as usize)
     }
 
     // Memory mapping functions.
