@@ -508,6 +508,9 @@ impl Instruction {
     /// Calculates a memory address using by adding X to the 8-bit value in the
     /// instruction, THEN use that address to find ANOTHER address, then return
     /// THAT address.
+    ///
+    /// TODO: Remove page cross detection as indirect x never has a page
+    /// crossing penalty.
     #[inline(always)]
     fn indirect_x(&self, cpu: &CPU, memory: &mut Memory) -> (usize, PageCross) {
         let arg = self.arg_u8();
