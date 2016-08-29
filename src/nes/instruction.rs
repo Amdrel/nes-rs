@@ -49,6 +49,7 @@ impl Instruction {
         let len = opcode_len(&opcode);
 
         match opcode {
+            BCCRel   => format!("BCC ${:04X}", cpu.pc + self.1 as u16 + len as u16),
             BCSRel   => format!("BCS ${:04X}", cpu.pc + self.1 as u16 + len as u16),
             CLCImp   => format!("CLC"),
             CLDImp   => format!("CLD"),
@@ -57,6 +58,14 @@ impl Instruction {
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
+            LDAImm   => format!("LDA #${:02X}", self.1),
+            LDAZero  => format!("LDA ${:02X}", self.1),
+            LDAZeroX => format!("LDA ${:02X},X", self.1),
+            LDAAbs   => format!("LDA ${:02X}{:02X}", self.2, self.1),
+            LDAAbsX  => format!("LDA ${:02X}{:02X},X", self.2, self.1),
+            LDAAbsY  => format!("LDA ${:02X}{:02X},Y", self.2, self.1),
+            LDAIndX  => format!("LDA (${:02X},X)", self.1),
+            LDAIndY  => format!("LDA (${:02X}),Y", self.1),
             LDXImm   => format!("LDX #${:02X}", self.1),
             LDXZero  => format!("LDX ${:02X}", self.1),
             LDXZeroY => format!("LDX ${:02X},Y", self.1),
@@ -121,6 +130,18 @@ impl Instruction {
 
         // Execute the internal logic of the instruction based on it's opcode.
         match opcode {
+            BCCRel => {
+                if !cpu.carry_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = cpu.pc.wrapping_add(self.relative() as u16);
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
             BCSRel => {
                 if cpu.carry_flag_set() {
                     let old_pc = cpu.pc as usize;
@@ -170,6 +191,107 @@ impl Instruction {
                 memory.stack_push_u16(cpu, addr - 1);
                 cpu.pc = addr;
                 cpu.cycles += 6;
+            },
+            LDAImm => {
+                cpu.a = self.immediate();
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            LDAZero => {
+                cpu.a = memory.read_u8(self.zero_page());
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            LDAZeroX => {
+                cpu.a = memory.read_u8(self.zero_page_x(cpu));
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDAAbs => {
+                cpu.a = memory.read_u8(self.absolute());
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDAAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                cpu.a = memory.read_u8(addr);
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDAAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                cpu.a = memory.read_u8(addr);
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDAIndX => {
+                let (addr, _) = self.indirect_x(cpu, memory);
+                cpu.a = memory.read_u8(addr);
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            LDAIndY => {
+                let (addr, page_cross) = self.indirect_y(cpu, memory);
+                cpu.a = memory.read_u8(addr);
+                if cpu.a == 0 {
+                    cpu.set_zero_flag();
+                }
+                if is_negative(cpu.a) {
+                    cpu.set_negative_flag();
+                }
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 5;
+                cpu.pc += len;
             },
             LDXImm => {
                 cpu.x = self.immediate();
@@ -387,17 +509,22 @@ impl Instruction {
     /// instruction, THEN use that address to find ANOTHER address, then return
     /// THAT address.
     #[inline(always)]
-    fn indirect_x(&self, cpu: &CPU, memory: &mut Memory) -> usize {
-        let addr = self.arg_u8().wrapping_add(cpu.x) as usize;
-        memory.read_u16(addr) as usize
+    fn indirect_x(&self, cpu: &CPU, memory: &mut Memory) -> (usize, PageCross) {
+        let arg = self.arg_u8();
+        let addr = arg.wrapping_add(cpu.x) as usize;
+        let page_cross = page_cross(arg as usize, addr);
+        (memory.read_u16(addr) as usize, page_cross)
     }
 
     /// Sane version of indirect_x that gets the zero page address in the
     /// instruction, adds Y to it, then returns the resulting address.
     #[inline(always)]
-    fn indirect_y(&self, cpu: &CPU, memory: &mut Memory) -> usize {
+    fn indirect_y(&self, cpu: &CPU, memory: &mut Memory) -> (usize, PageCross) {
         let arg = self.arg_u8() as usize;
-        memory.read_u16(arg).wrapping_add(cpu.y as u16) as usize
+        let base_addr = memory.read_u16(arg);
+        let addr = base_addr.wrapping_add(cpu.y as u16) as usize;
+        let page_cross = page_cross(base_addr as usize, addr);
+        (addr, page_cross)
     }
 }
 
