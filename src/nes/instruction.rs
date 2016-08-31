@@ -50,9 +50,9 @@ impl Instruction {
 
         match opcode {
             // TODO: Fix incorrect displays for relative operations.
-            BCCRel   => format!("BCC ${:04X}", cpu.pc + self.1 as u16 + len as u16),
-            BCSRel   => format!("BCS ${:04X}", cpu.pc + self.1 as u16 + len as u16),
-            BEQRel   => format!("BEQ ${:04X}", cpu.pc + self.1 as u16 + len as u16),
+            BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             CLCImp   => format!("CLC"),
             CLDImp   => format!("CLD"),
             CLIImp   => format!("CLI"),
