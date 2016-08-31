@@ -539,6 +539,7 @@ enum PageCross {
 }
 
 // Additional utility functions used often in instruction logic.
+// TODO: Should this be moved somewhere else?
 
 /// Checks if an unsigned number would be negative if it was signed. This is
 /// done by checking if the 7th bit is set.
