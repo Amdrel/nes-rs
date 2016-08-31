@@ -49,8 +49,10 @@ impl Instruction {
         let len = opcode_len(&opcode);
 
         match opcode {
+            // TODO: Fix incorrect displays for relative operations.
             BCCRel   => format!("BCC ${:04X}", cpu.pc + self.1 as u16 + len as u16),
             BCSRel   => format!("BCS ${:04X}", cpu.pc + self.1 as u16 + len as u16),
+            BEQRel   => format!("BEQ ${:04X}", cpu.pc + self.1 as u16 + len as u16),
             CLCImp   => format!("CLC"),
             CLDImp   => format!("CLD"),
             CLIImp   => format!("CLI"),
@@ -133,7 +135,7 @@ impl Instruction {
             BCCRel => {
                 if !cpu.carry_flag_set() {
                     let old_pc = cpu.pc as usize;
-                    cpu.pc = cpu.pc.wrapping_add(self.relative() as u16);
+                    cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
                     if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
@@ -145,7 +147,19 @@ impl Instruction {
             BCSRel => {
                 if cpu.carry_flag_set() {
                     let old_pc = cpu.pc as usize;
-                    cpu.pc = cpu.pc.wrapping_add(self.relative() as u16);
+                    cpu.pc = add_relative(cpu.pc, self.relative());
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            BEQRel => {
+                if cpu.zero_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
                     if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
@@ -196,9 +210,13 @@ impl Instruction {
                 cpu.a = self.immediate();
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 2;
                 cpu.pc += len;
@@ -207,9 +225,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(self.zero_page());
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 3;
                 cpu.pc += len;
@@ -218,9 +240,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(self.zero_page_x(cpu));
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 4;
                 cpu.pc += len;
@@ -229,9 +255,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(self.absolute());
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 4;
                 cpu.pc += len;
@@ -241,9 +271,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(addr);
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
@@ -256,9 +290,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(addr);
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
@@ -271,9 +309,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(addr);
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 6;
                 cpu.pc += len;
@@ -283,9 +325,13 @@ impl Instruction {
                 cpu.a = memory.read_u8(addr);
                 if cpu.a == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.a) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
@@ -297,9 +343,13 @@ impl Instruction {
                 cpu.x = self.immediate();
                 if cpu.x == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.x) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 2;
                 cpu.pc += len;
@@ -308,9 +358,13 @@ impl Instruction {
                 cpu.x = memory.read_u8(self.zero_page());
                 if cpu.x == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.x) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 3;
                 cpu.pc += len;
@@ -319,9 +373,13 @@ impl Instruction {
                 cpu.x = memory.read_u8(self.zero_page_y(cpu));
                 if cpu.x == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.x) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 4;
                 cpu.pc += len;
@@ -330,9 +388,13 @@ impl Instruction {
                 cpu.x = memory.read_u8(self.absolute());
                 if cpu.x == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.x) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 4;
                 cpu.pc += len;
@@ -345,9 +407,13 @@ impl Instruction {
                 cpu.x = memory.read_u8(addr);
                 if cpu.x == 0 {
                     cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
                 }
                 if is_negative(cpu.x) {
                     cpu.set_negative_flag();
+                } else {
+                    cpu.unset_negative_flag();
                 }
                 cpu.cycles += 4;
                 cpu.pc += len;
@@ -572,5 +638,15 @@ fn page_cross(addr1: usize, addr2: usize) -> PageCross {
         PageCross::Forwards
     } else {
         PageCross::Same
+    }
+}
+
+/// Adds a relative displacement to an address. This is useful for operations
+/// using relative addressing that allow branching forwards or backwards.
+fn add_relative(base_addr: u16, displacement: i8) -> u16 {
+    if displacement < 0 {
+        base_addr.wrapping_sub(-(displacement) as u16)
+    } else {
+        base_addr.wrapping_add(displacement as u16)
     }
 }
