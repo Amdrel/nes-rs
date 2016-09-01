@@ -27,6 +27,8 @@ pub const NEGATIVE_FLAG    : u8 = 0x80;
 /// Much of the information and comments are due credit to www.obelisk.me.uk,
 /// which has really good information about the 6502 processor. If you're
 /// interested in diving further, I recommend you give that site a visit.
+///
+/// TODO: Add condition to behave like the 2A07 (PAL).
 #[derive(Debug)]
 pub struct CPU {
     // The program counter is a 16-bit register which points to the next
@@ -259,6 +261,28 @@ impl CPU {
         self.p & NEGATIVE_FLAG == NEGATIVE_FLAG
     }
 
+    /// Sets the zero flag if the value passed (typically a reference to a
+    /// register) if the value is zero, otherwise it's unset.
+    #[inline(always)]
+    pub fn toggle_zero_flag(&mut self, value: u8) {
+        if value == 0 {
+            self.set_zero_flag();
+        } else {
+            self.unset_zero_flag();
+        }
+    }
+
+    /// Sets the negative flag if the value passed (typically a reference to a
+    /// register) if the value is negative, otherwise it's unset.
+    #[inline(always)]
+    pub fn toggle_negative_flag(&mut self, value: u8) {
+        if self.is_negative(value) {
+            self.set_negative_flag();
+        } else {
+            self.unset_negative_flag();
+        }
+    }
+
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
     pub fn execute(&mut self, memory: &mut Memory) {
@@ -270,6 +294,15 @@ impl CPU {
         instr.execute(self, memory);
     }
 
+    /// Checks if an unsigned number would be negative if it was signed. This is
+    /// done by checking if the 7th bit is set.
+    #[inline(always)]
+    fn is_negative(&self, arg: u8) -> bool {
+        let negative_bitmask = 0b10000000;
+        arg & negative_bitmask == negative_bitmask
+    }
+
+    /// Returns "SET" if the passed boolean is true, otherwise "UNSET".
     fn fmt_flag(&self, flag: bool) -> &'static str {
         if flag { "SET" } else { "UNSET" }
     }

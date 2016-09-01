@@ -208,77 +208,42 @@ impl Instruction {
             },
             LDAImm => {
                 cpu.a = self.immediate();
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
             LDAZero => {
                 cpu.a = memory.read_u8(self.zero_page());
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 cpu.cycles += 3;
                 cpu.pc += len;
             },
             LDAZeroX => {
                 cpu.a = memory.read_u8(self.zero_page_x(cpu));
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
             LDAAbs => {
                 cpu.a = memory.read_u8(self.absolute());
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
             LDAAbsX => {
                 let (addr, page_cross) = self.absolute_x(cpu);
                 cpu.a = memory.read_u8(addr);
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
                 }
@@ -288,16 +253,9 @@ impl Instruction {
             LDAAbsY => {
                 let (addr, page_cross) = self.absolute_y(cpu);
                 cpu.a = memory.read_u8(addr);
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
                 }
@@ -307,32 +265,18 @@ impl Instruction {
             LDAIndX => {
                 let (addr, _) = self.indirect_x(cpu, memory);
                 cpu.a = memory.read_u8(addr);
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 cpu.cycles += 6;
                 cpu.pc += len;
             },
             LDAIndY => {
                 let (addr, page_cross) = self.indirect_y(cpu, memory);
                 cpu.a = memory.read_u8(addr);
-                if cpu.a == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.a) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
                 }
@@ -341,61 +285,33 @@ impl Instruction {
             },
             LDXImm => {
                 cpu.x = self.immediate();
-                if cpu.x == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.x) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let x = cpu.x;
+                cpu.toggle_zero_flag(x);
+                cpu.toggle_negative_flag(x);
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
             LDXZero => {
                 cpu.x = memory.read_u8(self.zero_page());
-                if cpu.x == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.x) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let x = cpu.x;
+                cpu.toggle_zero_flag(x);
+                cpu.toggle_negative_flag(x);
                 cpu.cycles += 3;
                 cpu.pc += len;
             },
             LDXZeroY => {
                 cpu.x = memory.read_u8(self.zero_page_y(cpu));
-                if cpu.x == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.x) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let x = cpu.x;
+                cpu.toggle_zero_flag(x);
+                cpu.toggle_negative_flag(x);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
             LDXAbs => {
                 cpu.x = memory.read_u8(self.absolute());
-                if cpu.x == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.x) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let x = cpu.x;
+                cpu.toggle_zero_flag(x);
+                cpu.toggle_negative_flag(x);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
@@ -405,16 +321,9 @@ impl Instruction {
                     cpu.cycles += 1;
                 }
                 cpu.x = memory.read_u8(addr);
-                if cpu.x == 0 {
-                    cpu.set_zero_flag();
-                } else {
-                    cpu.unset_zero_flag();
-                }
-                if is_negative(cpu.x) {
-                    cpu.set_negative_flag();
-                } else {
-                    cpu.unset_negative_flag();
-                }
+                let x = cpu.x;
+                cpu.toggle_zero_flag(x);
+                cpu.toggle_negative_flag(x);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
@@ -607,14 +516,6 @@ enum PageCross {
 // Additional utility functions used often in instruction logic.
 // TODO: Should this be moved somewhere else?
 
-/// Checks if an unsigned number would be negative if it was signed. This is
-/// done by checking if the 7th bit is set.
-#[inline(always)]
-fn is_negative(arg: u8) -> bool {
-    let negative_bitmask = 0b10000000;
-    arg & negative_bitmask == negative_bitmask
-}
-
 /// Returns the page index of the given address. Each memory page for the
 /// 6502 is 256 (FF) bytes in size and is relevant because some instructions
 /// need extra cycles to use addresses in different pages.
@@ -643,6 +544,7 @@ fn page_cross(addr1: usize, addr2: usize) -> PageCross {
 
 /// Adds a relative displacement to an address. This is useful for operations
 /// using relative addressing that allow branching forwards or backwards.
+#[inline(always)]
 fn add_relative(base_addr: u16, displacement: i8) -> u16 {
     if displacement < 0 {
         base_addr.wrapping_sub(-(displacement) as u16)
