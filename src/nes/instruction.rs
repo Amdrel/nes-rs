@@ -53,6 +53,7 @@ impl Instruction {
             BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BNERel   => format!("BNE ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             CLCImp   => format!("CLC"),
             CLDImp   => format!("CLD"),
             CLIImp   => format!("CLI"),
@@ -77,9 +78,16 @@ impl Instruction {
             SECImp   => format!("SEC"),
             SEDImp   => format!("SED"),
             SEIImp   => format!("SEI"),
-            STXZero  => format!("STX ${:02X} = {:02X}", self.1, cpu.x),
-            STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, cpu.x),
-            STXAbs   => format!("STX ${:02X}${:02X} = {:02X}", self.2, self.1, cpu.x),
+            STAZero  => format!("STA ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
+            STAZeroX => format!("STA ${:02X},X = {:02X}", self.1, self.dereference_zero_page_x(memory, cpu)),
+            STAAbs   => format!("STA ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
+            STAAbsX  => format!("STA ${:02X}{:02X},X = {:02X}", self.2, self.1, self.dereference_absolute_x(memory, cpu)),
+            STAAbsY  => format!("STA ${:02X}{:02X},Y = {:02X}", self.2, self.1, self.dereference_absolute_y(memory, cpu)),
+            STAIndX  => format!("STA (${:02X}{:02X},X) = {:02X}", self.2, self.1, self.dereference_indirect_x(memory, cpu)),
+            STAIndY  => format!("STA (${:02X}{:02X}),Y = {:02X}", self.2, self.1, self.dereference_indirect_y(memory, cpu)),
+            STXZero  => format!("STX ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
+            STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, self.dereference_zero_page_y(memory, cpu)),
+            STXAbs   => format!("STX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
     }
@@ -168,6 +176,18 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            BNERel => {
+                if !cpu.zero_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = add_relative(cpu.pc, self.relative());
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            }
             CLCImp => {
                 cpu.unset_carry_flag();
                 cpu.cycles += 2;
@@ -347,6 +367,43 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            STAZero => {
+                memory.write_u8(self.zero_page(), cpu.a);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            STAZeroX => {
+                memory.write_u8(self.zero_page_x(cpu), cpu.a);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            STAAbs => {
+                memory.write_u8(self.absolute(), cpu.a);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            STAAbsX => {
+                memory.write_u8(self.absolute_x(cpu).0, cpu.a);
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            STAAbsY => {
+                memory.write_u8(self.absolute_y(cpu).0, cpu.a);
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            STAIndX => {
+                let addr = self.indirect_x(cpu, memory).0;
+                memory.write_u8(addr, cpu.a);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            STAIndY => {
+                let addr = self.indirect_y(cpu, memory).0;
+                memory.write_u8(addr, cpu.a);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
             STXZero => {
                 memory.write_u8(self.zero_page(), cpu.x);
                 cpu.cycles += 3;
@@ -503,6 +560,69 @@ impl Instruction {
         let addr = base_addr.wrapping_add(cpu.y as u16) as usize;
         let page_cross = page_cross(base_addr as usize, addr);
         (addr, page_cross)
+    }
+
+    /// Dereferences a zero page address.
+    #[inline(always)]
+    fn dereference_zero_page(&self, memory: &mut Memory) -> u8 {
+        let addr = self.zero_page();
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences a zero page x address.
+    #[inline(always)]
+    fn dereference_zero_page_x(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.zero_page_x(cpu);
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences a zero page y address.
+    #[inline(always)]
+    fn dereference_zero_page_y(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.zero_page_y(cpu);
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences an absolute address.
+    #[inline(always)]
+    fn dereference_absolute(&self, memory: &mut Memory) -> u8 {
+        let addr = self.absolute();
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences an absolute x address.
+    #[inline(always)]
+    fn dereference_absolute_x(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.absolute_x(cpu).0;
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences an absolute y address.
+    #[inline(always)]
+    fn dereference_absolute_y(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.absolute_y(cpu).0;
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences an indirect address.
+    #[inline(always)]
+    fn dereference_indirect(&self, memory: &mut Memory) -> u8 {
+        let addr = self.indirect(memory);
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences an indirect x address.
+    #[inline(always)]
+    fn dereference_indirect_x(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.indirect_x(cpu, memory).0;
+        memory.read_u8(addr)
+    }
+
+    /// Dereferences an indirect y address.
+    #[inline(always)]
+    fn dereference_indirect_y(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.indirect_y(cpu, memory).0;
+        memory.read_u8(addr)
     }
 }
 
