@@ -55,6 +55,9 @@ impl Instruction {
             BITZero  => format!("BIT ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
             BITAbs   => format!("BIT ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             BNERel   => format!("BNE ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BPLRel   => format!("BPL ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BVCRel   => format!("BVC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BVSRel   => format!("BVS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             CLCImp   => format!("CLC"),
             CLDImp   => format!("CLD"),
             CLIImp   => format!("CLI"),
@@ -195,6 +198,42 @@ impl Instruction {
             },
             BNERel => {
                 if !cpu.zero_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = add_relative(cpu.pc, self.relative());
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            BPLRel => {
+                if !cpu.negative_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = add_relative(cpu.pc, self.relative());
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            BVCRel => {
+                if !cpu.overflow_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = add_relative(cpu.pc, self.relative());
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            BVSRel => {
+                if cpu.overflow_flag_set() {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
