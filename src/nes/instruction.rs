@@ -49,10 +49,11 @@ impl Instruction {
         let len = opcode_len(&opcode);
 
         match opcode {
-            // TODO: Fix incorrect displays for relative operations.
             BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BITZero  => format!("BIT ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
+            BITAbs   => format!("BIT ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             BNERel   => format!("BNE ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             CLCImp   => format!("CLC"),
             CLDImp   => format!("CLD"),
@@ -176,6 +177,22 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            BITZero => {
+                let result = self.dereference_zero_page(memory) & cpu.a;
+                cpu.toggle_zero_flag(result);
+                let mask = 0xC0;
+                cpu.p = (cpu.p & !mask) | (result & mask);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            BITAbs => {
+                let result = self.dereference_absolute(memory) & cpu.a;
+                cpu.toggle_zero_flag(result);
+                let mask = 0xC0;
+                cpu.p = (cpu.p & !mask) | (result & mask);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
             BNERel => {
                 if !cpu.zero_flag_set() {
                     let old_pc = cpu.pc as usize;
@@ -187,7 +204,7 @@ impl Instruction {
                 }
                 cpu.cycles += 2;
                 cpu.pc += len;
-            }
+            },
             CLCImp => {
                 cpu.unset_carry_flag();
                 cpu.cycles += 2;
