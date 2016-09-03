@@ -79,6 +79,7 @@ impl Instruction {
             LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
             LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
             NOPImp   => format!("NOP"),
+            RTSImp   => format!("RTS"),
             SECImp   => format!("SEC"),
             SEDImp   => format!("SED"),
             SEIImp   => format!("SEI"),
@@ -277,9 +278,9 @@ impl Instruction {
                 cpu.cycles += 5;
             },
             JSRAbs => {
-                let addr = self.absolute() as u16;
-                memory.stack_push_u16(cpu, addr - 1);
-                cpu.pc = addr;
+                let pc = cpu.pc;
+                memory.stack_push_u16(cpu, pc + len - 1);
+                cpu.pc = self.absolute() as u16;
                 cpu.cycles += 6;
             },
             LDAImm => {
@@ -407,6 +408,10 @@ impl Instruction {
                 // This is the most difficult instruction to implement.
                 cpu.cycles += 2;
                 cpu.pc += len;
+            },
+            RTSImp => {
+                cpu.pc = memory.stack_pop_u16(cpu) + len;
+                cpu.cycles += 6;
             },
             SECImp => {
                 cpu.set_carry_flag();
