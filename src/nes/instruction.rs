@@ -49,6 +49,14 @@ impl Instruction {
         let len = opcode_len(&opcode);
 
         match opcode {
+            ANDImm   => format!("AND #${:02X}", self.1),
+            ANDZero  => format!("AND ${:02X}", self.1),
+            ANDZeroX => format!("AND ${:02X},X", self.1),
+            ANDAbs   => format!("AND ${:02X}{:02X}", self.2, self.1),
+            ANDAbsX  => format!("AND ${:02X}{:02X},X", self.2, self.1),
+            ANDAbsY  => format!("AND ${:02X}{:02X},Y", self.2, self.1),
+            ANDIndX  => format!("AND (${:02X}{:02X},X)", self.2, self.1),
+            ANDIndY  => format!("AND (${:02X}{:02X}),Y", self.2, self.1),
             BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
@@ -79,6 +87,8 @@ impl Instruction {
             LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
             LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
             NOPImp   => format!("NOP"),
+            PHPImp   => format!("PHP"),
+            PLAImp   => format!("PLA"),
             RTSImp   => format!("RTS"),
             SECImp   => format!("SEC"),
             SEDImp   => format!("SED"),
@@ -145,6 +155,82 @@ impl Instruction {
 
         // Execute the internal logic of the instruction based on it's opcode.
         match opcode {
+            ANDImm => {
+                cpu.a &= self.immediate();
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            ANDZero => {
+                cpu.a &= self.dereference_zero_page(memory);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            ANDZeroX => {
+                cpu.a &= self.dereference_zero_page_x(memory, cpu);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            ANDAbs => {
+                cpu.a &= self.dereference_absolute(memory);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            ANDAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                cpu.a &= memory.read_u8(addr);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 4;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
+            ANDAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                cpu.a &= memory.read_u8(addr);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 4;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
+            ANDIndX => {
+                cpu.a &= self.dereference_indirect_x(memory, cpu);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            ANDIndY => {
+                let (addr, page_cross) = self.indirect_y(cpu, memory);
+                cpu.a &= memory.read_u8(addr);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 5;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
             BCCRel => {
                 if !cpu.carry_flag_set() {
                     let old_pc = cpu.pc as usize;
@@ -407,6 +493,20 @@ impl Instruction {
             NOPImp => {
                 // This is the most difficult instruction to implement.
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            PHPImp => {
+                let p = cpu.p | 0x10; // Ensure bit 5 is always set.
+                memory.stack_push_u8(cpu, p);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            PLAImp => {
+                cpu.a = memory.stack_pop_u8(cpu);
+                let a = cpu.a;
+                cpu.toggle_zero_flag(a);
+                cpu.toggle_negative_flag(a);
+                cpu.cycles += 4;
                 cpu.pc += len;
             },
             RTSImp => {

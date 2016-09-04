@@ -43,6 +43,10 @@ pub const PRG_ROM_2_END                  : usize = 0xFFFF;
 pub const TRAINER_START: usize = 0x7000;
 pub const TRAINER_SIZE : usize = 512;
 
+// Location of the first byte on the bottom of the stack. The stack starts on
+// memory page 2 (0x100).
+const STACK_OFFSET: usize = 0x100;
+
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the CPU implementation and are instead
 /// accessed through a read function that handles memory mapping.
@@ -149,16 +153,28 @@ impl Memory {
 
     // Utility functions for managing the stack.
 
+    /// Pushes an 8-bit number onto the stack.
+    pub fn stack_push_u8(&mut self, cpu: &mut CPU, value: u8) {
+        self.write_u8(STACK_OFFSET + cpu.sp as usize, value);
+        cpu.sp = cpu.sp.wrapping_sub(1);
+    }
+
+    /// Pops an 8-bit number off the stack.
+    pub fn stack_pop_u8(&mut self, cpu: &mut CPU) -> u8 {
+        cpu.sp = cpu.sp.wrapping_add(1);
+        self.read_u8(STACK_OFFSET + cpu.sp as usize)
+    }
+
     /// Pushes a 16-bit number (usually an address) onto the stack.
     pub fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16) {
-        self.write_u16(0x100 + cpu.sp as usize, value);
+        self.write_u16(STACK_OFFSET + cpu.sp as usize, value);
         cpu.sp = cpu.sp.wrapping_sub(2);
     }
 
     /// Pops a 16-bit number (usually an address) off the stack.
     pub fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
         cpu.sp = cpu.sp.wrapping_add(2);
-        self.read_u16(0x100 + cpu.sp as usize)
+        self.read_u16(STACK_OFFSET + cpu.sp as usize)
     }
 
     // Memory mapping functions.
