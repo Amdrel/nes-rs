@@ -55,8 +55,8 @@ impl Instruction {
             ANDAbs   => format!("AND ${:02X}{:02X}", self.2, self.1),
             ANDAbsX  => format!("AND ${:02X}{:02X},X", self.2, self.1),
             ANDAbsY  => format!("AND ${:02X}{:02X},Y", self.2, self.1),
-            ANDIndX  => format!("AND (${:02X}{:02X},X)", self.2, self.1),
-            ANDIndY  => format!("AND (${:02X}{:02X}),Y", self.2, self.1),
+            ANDIndX  => format!("AND (${:02X},X)", self.1),
+            ANDIndY  => format!("AND (${:02X}),Y", self.1),
             BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
@@ -70,6 +70,14 @@ impl Instruction {
             CLDImp   => format!("CLD"),
             CLIImp   => format!("CLI"),
             CLVImp   => format!("CLV"),
+            CMPImm   => format!("CMP #${:02X}", self.1),
+            CMPZero  => format!("CMP ${:02X}", self.1),
+            CMPZeroX => format!("CMP ${:02X},X", self.1),
+            CMPAbs   => format!("CMP ${:02X}{:02X}", self.2, self.1),
+            CMPAbsX  => format!("CMP ${:02X}{:02X},X", self.2, self.1),
+            CMPAbsY  => format!("CMP ${:02X}{:02X},Y", self.2, self.1),
+            CMPIndX  => format!("CMP (${:02X},X)", self.1),
+            CMPIndY  => format!("CMP (${:02X}),Y", self.1),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -98,8 +106,8 @@ impl Instruction {
             STAAbs   => format!("STA ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             STAAbsX  => format!("STA ${:02X}{:02X},X = {:02X}", self.2, self.1, self.dereference_absolute_x(memory, cpu)),
             STAAbsY  => format!("STA ${:02X}{:02X},Y = {:02X}", self.2, self.1, self.dereference_absolute_y(memory, cpu)),
-            STAIndX  => format!("STA (${:02X}{:02X},X) = {:02X}", self.2, self.1, self.dereference_indirect_x(memory, cpu)),
-            STAIndY  => format!("STA (${:02X}{:02X}),Y = {:02X}", self.2, self.1, self.dereference_indirect_y(memory, cpu)),
+            STAIndX  => format!("STA (${:02X},X) = {:02X}", self.1, self.dereference_indirect_x(memory, cpu)),
+            STAIndY  => format!("STA (${:02X}),Y = {:02X}", self.1, self.dereference_indirect_y(memory, cpu)),
             STXZero  => format!("STX ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
             STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, self.dereference_zero_page_y(memory, cpu)),
             STXAbs   => format!("STX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
@@ -349,6 +357,114 @@ impl Instruction {
             CLVImp => {
                 cpu.unset_overflow_flag();
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CMPImm => {
+                let arg = self.immediate();
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CMPZero => {
+                let arg = self.dereference_zero_page(memory);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            CMPZeroX => {
+                let arg = self.dereference_zero_page_x(memory, cpu);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            CMPAbs => {
+                let arg = self.dereference_absolute(memory);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            CMPAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                let arg = memory.read_u8(addr);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            CMPAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                let arg = memory.read_u8(addr);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            CMPIndX => {
+                let arg = self.dereference_indirect_x(memory, cpu);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            CMPIndY => {
+                let (addr, page_cross) = self.indirect_y(cpu, memory);
+                let arg = memory.read_u8(addr);
+                if cpu.a >= arg {
+                    cpu.set_carry_flag();
+                }
+                if cpu.a == arg {
+                    cpu.set_zero_flag();
+                }
+                cpu.toggle_negative_flag(arg);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 5;
                 cpu.pc += len;
             },
             JMPAbs => {
