@@ -9,6 +9,8 @@
 use nes::instruction::Instruction;
 use nes::memory::Memory;
 use std::fmt;
+use std::fs::File;
+use std::io::BufReader;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
 pub const CARRY_FLAG       : u8 = 0x1;
@@ -116,7 +118,11 @@ pub struct CPU {
     // time (the time it takes for the CPU clock to fire). Different
     // instructions take a different amount of cycles to complete depending on
     // their complexity.
-    pub cycles: u16
+    pub cycles: u16,
+
+    // This will contain an open file if the CPU is in testing mode. It will be
+    // read during program execution and compared against.
+    execution_log: Option<BufReader<File>>,
 }
 
 impl CPU {
@@ -128,7 +134,8 @@ impl CPU {
             x: 0,
             y: 0,
             p: 0x24,
-            cycles: 0
+            cycles: 0,
+            execution_log: None,
         }
     }
 
@@ -276,11 +283,17 @@ impl CPU {
     /// register) if the value is negative, otherwise it's unset.
     #[inline(always)]
     pub fn toggle_negative_flag(&mut self, value: u8) {
-        if self.is_negative(value) {
+        if is_negative(value) {
             self.set_negative_flag();
         } else {
             self.unset_negative_flag();
         }
+    }
+
+    /// Save the passed execution log which will be used to compare the CPU's
+    /// execution to the passed Nintendulator log.
+    pub fn begin_testing(&mut self, log: BufReader<File>) {
+        self.execution_log = Some(log);
     }
 
     /// Parse an instruction from memory at the address the program counter
@@ -292,19 +305,6 @@ impl CPU {
         let instr = Instruction::parse(self.pc as usize, memory);
         instr.log(self, memory);
         instr.execute(self, memory);
-    }
-
-    /// Checks if an unsigned number would be negative if it was signed. This is
-    /// done by checking if the 7th bit is set.
-    #[inline(always)]
-    fn is_negative(&self, arg: u8) -> bool {
-        let negative_bitmask = 0b10000000;
-        arg & negative_bitmask == negative_bitmask
-    }
-
-    /// Returns "SET" if the passed boolean is true, otherwise "UNSET".
-    fn fmt_flag(&self, flag: bool) -> &'static str {
-        if flag { "SET" } else { "UNSET" }
     }
 }
 
@@ -318,12 +318,25 @@ impl fmt::Display for CPU {
         writeln!(f, "    Y Register:      {:#X}", self.y).unwrap();
         writeln!(f, "").unwrap();
         writeln!(f, "Status Register: {:#X}", self.p).unwrap();
-        writeln!(f, "    Carry Flag:        {}", self.fmt_flag(self.carry_flag_set())).unwrap();
-        writeln!(f, "    Zero Flag:         {}", self.fmt_flag(self.zero_flag_set())).unwrap();
-        writeln!(f, "    Interrupt Disable: {}", self.fmt_flag(self.interrupt_disable_set())).unwrap();
-        writeln!(f, "    Decimal Mode:      {}", self.fmt_flag(self.decimal_mode_set())).unwrap();
-        writeln!(f, "    Break Command:     {}", self.fmt_flag(self.break_command_set())).unwrap();
-        writeln!(f, "    Overflow Flag:     {}", self.fmt_flag(self.overflow_flag_set())).unwrap();
-        writeln!(f, "    Negative Flag:     {}", self.fmt_flag(self.negative_flag_set()))
+        writeln!(f, "    Carry Flag:        {}", fmt_flag(self.carry_flag_set())).unwrap();
+        writeln!(f, "    Zero Flag:         {}", fmt_flag(self.zero_flag_set())).unwrap();
+        writeln!(f, "    Interrupt Disable: {}", fmt_flag(self.interrupt_disable_set())).unwrap();
+        writeln!(f, "    Decimal Mode:      {}", fmt_flag(self.decimal_mode_set())).unwrap();
+        writeln!(f, "    Break Command:     {}", fmt_flag(self.break_command_set())).unwrap();
+        writeln!(f, "    Overflow Flag:     {}", fmt_flag(self.overflow_flag_set())).unwrap();
+        writeln!(f, "    Negative Flag:     {}", fmt_flag(self.negative_flag_set()))
     }
+}
+
+/// Checks if an unsigned number would be negative if it was signed. This is
+/// done by checking if the 7th bit is set.
+#[inline(always)]
+fn is_negative(arg: u8) -> bool {
+    let negative_bitmask = 0b10000000;
+    arg & negative_bitmask == negative_bitmask
+}
+
+/// Returns "SET" if the passed boolean is true, otherwise "UNSET".
+fn fmt_flag(flag: bool) -> &'static str {
+    if flag { "SET" } else { "UNSET" }
 }

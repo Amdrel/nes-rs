@@ -16,15 +16,11 @@ mod nes;
 
 use getopts::Options;
 use io::binutils::INESHeader;
+use io::errors::*;
 use nes::nes::NES;
+use nes::nes::NESRuntimeOptions;
 use std::env;
 use std::io::Write;
-
-// Exit codes used throughout the application. These exit codes has specific
-// meanings and are used when no OS error codes are available.
-const EXIT_SUCCESS: i32 = 0;
-const EXIT_FAILURE: i32 = 1; // Generic error ¯\_(ツ)_/¯.
-const EXIT_INVALID: i32 = 2; // Invalid rom passed.
 
 /// Prints the application name alongside the cargo version.
 fn print_version() {
@@ -57,6 +53,7 @@ fn init() -> i32 {
     // Initialize the argument parser and parse them.
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
+    opts.optopt("t", "test", "test the emulator against a CPU log", "cpulog.log");
     opts.optflag("v", "version", "print version information");
     opts.optflag("h", "help", "print this message");
     let matches = match opts.parse(&args[1..]) {
@@ -78,16 +75,14 @@ fn init() -> i32 {
         return EXIT_SUCCESS
     }
 
-    // Assume the first free argument is the rom filename. Bail if there are
-    // no free arguments.
+    // Get the rom filename from the first free argument and read the ROM into
+    // memory (vector of bytes).
     let rom_file_name = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
         print_usage(opts, Some("nes-rs: no rom passed, cannot start emulation"));
         return EXIT_FAILURE
     };
-
-    // Read the rom from file using the filename passed from the command-line.
     let rom = match io::binutils::read_bin(&rom_file_name) {
         Ok(rom) => rom,
         Err(e) => {
@@ -98,17 +93,21 @@ fn init() -> i32 {
     };
 
     // Parse the rom's header to check if it's a valid iNES ROM.
+    // TODO: Support other ROM formats.
     let header = match INESHeader::new(&rom) {
         Ok(header) => header,
         Err(e) => {
             // TODO: Add complain macro or function, too much repetition.
             let mut stderr = std::io::stderr();
             writeln!(stderr, "nes-rs: cannot parse {}: {}", rom_file_name, e).unwrap();
-            return EXIT_INVALID
+            return EXIT_INVALID_ROM
         }
     };
 
-    let mut nes = NES::new(header, rom);
+    // Bootup the NES and start executing code from the ROM.
+    let mut nes = NES::new(rom, header, NESRuntimeOptions {
+        cpu_log: matches.opt_str("t"),
+    });
     nes.run()
 }
 
