@@ -6,11 +6,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use io::log;
 use nes::instruction::Instruction;
 use nes::memory::Memory;
+use nes::nes::NESRuntimeOptions;
 use std::fmt;
 use std::fs::File;
+use std::io::BufRead;
 use std::io::BufReader;
+use std::io::Write;
+use std::io::stderr;
+use std::num::ParseIntError;
+use std::u16;
+use std::u8;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
 pub const CARRY_FLAG       : u8 = 0x1;
@@ -31,7 +39,6 @@ pub const NEGATIVE_FLAG    : u8 = 0x80;
 /// interested in diving further, I recommend you give that site a visit.
 ///
 /// TODO: Add condition to behave like the 2A07 (PAL).
-#[derive(Debug)]
 pub struct CPU {
     // The program counter is a 16-bit register which points to the next
     // instruction to be executed. The value of program counter is modified
@@ -120,13 +127,17 @@ pub struct CPU {
     // their complexity.
     pub cycles: u16,
 
+    // Options passed from the command-line that may influence how the CPU
+    // behaves.
+    runtime_options: NESRuntimeOptions,
+
     // This will contain an open file if the CPU is in testing mode. It will be
     // read during program execution and compared against.
     execution_log: Option<BufReader<File>>,
 }
 
 impl CPU {
-    pub fn new() -> CPU {
+    pub fn new(runtime_options: NESRuntimeOptions) -> CPU {
         CPU {
             pc: 0xC000,
             sp: 0xFD,
@@ -135,6 +146,7 @@ impl CPU {
             y: 0,
             p: 0x24,
             cycles: 0,
+            runtime_options: runtime_options,
             execution_log: None,
         }
     }
@@ -299,11 +311,36 @@ impl CPU {
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
     pub fn execute(&mut self, memory: &mut Memory) {
-        // NOTE: At this time, some parsing logic is done twice for the sake of
-        // code simplicity. In the future I may rework the function arguments to
-        // reuse as much data as possible since this is high-performance code.
         let instr = Instruction::parse(self.pc as usize, memory);
-        instr.log(self, memory);
+
+        if self.runtime_options.verbose || self.execution_log.is_some() {
+            let raw_fragment = instr.log(self, memory);
+
+            // Print the log fragment only if verbose mode is enabled.
+            if self.runtime_options.verbose {
+                log::log("cpu", format!("{}", raw_fragment), &self.runtime_options);
+            }
+
+            // Compare the current state of the emulator against a log if one was
+            // provided on the command-line.
+            if let Some(ref mut execution_log) = self.execution_log {
+                // Read the next line from the log.
+                let mut log_fragment = String::new();
+                execution_log.read_line(&mut log_fragment);
+
+                // Parse and compare.
+                let emulator_frame = CPUFrame::parse(raw_fragment.as_str());
+                let log_frame = CPUFrame::parse(log_fragment.as_str());
+                if emulator_frame != log_frame {
+                    let mut stderr = stderr();
+                    log::log("error", "FATAL ERROR: Mismatched CPU frames:", &self.runtime_options);
+                    log::log("error", format!("Emulator Frame: {}", raw_fragment), &self.runtime_options);
+                    log::log("error", format!("Log Frame:      {}", log_fragment), &self.runtime_options);
+                    panic!("Mismatched CPU frames");
+                }
+            }
+        }
+
         instr.execute(self, memory);
     }
 }
@@ -325,6 +362,48 @@ impl fmt::Display for CPU {
         writeln!(f, "    Break Command:     {}", fmt_flag(self.break_command_set())).unwrap();
         writeln!(f, "    Overflow Flag:     {}", fmt_flag(self.overflow_flag_set())).unwrap();
         writeln!(f, "    Negative Flag:     {}", fmt_flag(self.negative_flag_set()))
+    }
+}
+
+/// CPU state for use during automated CPU testing.
+#[derive(Debug, PartialEq)]
+struct CPUFrame {
+    instruction: Instruction,
+    disassembly: String,
+    pc: u16,
+    a: u8,
+    x: u8,
+    y: u8,
+    p: u8,
+    sp: u8,
+}
+
+impl CPUFrame {
+    pub fn parse(frame: &str) -> Result<CPUFrame, ParseIntError> {
+        let word_1 = match u8::from_str_radix(&frame[6..8], 16) {
+            Ok(num) => num,
+            Err(_) => 0,
+        };
+        let word_2 = match u8::from_str_radix(&frame[9..11], 16) {
+            Ok(num) => num,
+            Err(_) => 0,
+        };
+        let word_3 = match u8::from_str_radix(&frame[12..14], 16) {
+            Ok(num) => num,
+            Err(_) => 0,
+        };
+        let instr = Instruction(word_1, word_2, word_3);
+
+        Ok(CPUFrame {
+            instruction: instr,
+            disassembly: String::from(&frame[16..46]),
+            pc: try!(u16::from_str_radix(&frame[0..4], 16)),
+            a:  try!(u8::from_str_radix(&frame[50..52], 16)),
+            x:  try!(u8::from_str_radix(&frame[55..57], 16)),
+            y:  try!(u8::from_str_radix(&frame[60..62], 16)),
+            p:  try!(u8::from_str_radix(&frame[65..67], 16)),
+            sp: try!(u8::from_str_radix(&frame[71..73], 16)),
+        })
     }
 }
 

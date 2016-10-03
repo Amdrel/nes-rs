@@ -16,7 +16,7 @@ use std::io::Cursor;
 /// All 6502 instructions are a maximum size of 3 bytes. The first byte is the
 /// opcode which is determines the action of the instruction. The following 2
 /// bytes are the arguments and are present depending on the opcode.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Instruction(pub u8, pub u8, pub u8);
 
 impl Instruction {
@@ -121,7 +121,7 @@ impl Instruction {
     /// TODO: Return a string for the test suite so CPU correctness can be
     /// checked. Also it may be more appropriate to move this function into the
     /// CPU.
-    pub fn log(&self, cpu: &CPU, memory: &mut Memory) {
+    pub fn log(&self, cpu: &CPU, memory: &mut Memory) -> String {
         use nes::opcode::opcode_len;
         let opcode = self.opcode();
         let len = opcode_len(&opcode) as u16;
@@ -146,9 +146,10 @@ impl Instruction {
         // NOTE: CYC is not cycles like the name sugests, but PPU dots. The PPU
         // can output 3 dots every CPU cycle on NTSC (PAL outputs an extra dot
         // every fifth CPU cycle).
-        println!("{:04X}  {}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
+        //       0       6   16     48       53       58       63       68        74
+        format!("{:04X}  {}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
                  cpu.pc, instr_str, disassembled, cpu.a, cpu.x, cpu.y, cpu.p,
-                 cpu.sp, 0);
+                 cpu.sp, 0)
     }
 
     /// Execute the instruction with a routine that corresponds with it's

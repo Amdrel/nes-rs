@@ -8,3 +8,4 @@
 
 pub mod binutils;
 pub mod errors;
+pub mod log;

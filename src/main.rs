@@ -41,7 +41,7 @@ fn print_usage(opts: Options, reason: Option<&str>) {
 
     writeln!(stderr, "nes-rs is an incomplete NES emulator written in Rust.").unwrap();
     writeln!(stderr, "").unwrap();
-    writeln!(stderr, "{}", opts.usage("Usage: nes-rs [OPTIONS] ROM")).unwrap();
+    writeln!(stderr, "{}", opts.usage("Usage: nes-rs [OPTION]... [FILE]")).unwrap();
     writeln!(stderr, "To contribute or report bugs, please see:").unwrap();
     writeln!(stderr, "<https://github.com/Reshurum/nes-rs>").unwrap();
 }
@@ -53,8 +53,9 @@ fn init() -> i32 {
     // Initialize the argument parser and parse them.
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
-    opts.optopt("t", "test", "test the emulator against a CPU log", "cpulog.log");
-    opts.optflag("v", "version", "print version information");
+    opts.optopt("t", "test", "test the emulator against a CPU log", "[FILE]");
+    opts.optflag("v", "verbose", "display CPU frame information");
+    opts.optflag("", "version", "print version information");
     opts.optflag("h", "help", "print this message");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -66,11 +67,11 @@ fn init() -> i32 {
     };
 
     // Handle flag based arguments.
-    if matches.opt_present("v") {
+    if matches.opt_present("version") {
         print_version();
         return EXIT_SUCCESS
     }
-    if matches.opt_present("h") {
+    if matches.opt_present("help") {
         print_usage(opts, None);
         return EXIT_SUCCESS
     }
@@ -106,7 +107,8 @@ fn init() -> i32 {
 
     // Bootup the NES and start executing code from the ROM.
     let mut nes = NES::new(rom, header, NESRuntimeOptions {
-        cpu_log: matches.opt_str("t"),
+        cpu_log: matches.opt_str("test"),
+        verbose: matches.opt_present("verbose"),
     });
     nes.run()
 }

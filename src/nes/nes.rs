@@ -8,6 +8,7 @@
 
 use io::binutils::INESHeader;
 use io::errors::*;
+use io::log;
 use nes::cpu::CPU;
 use std::fs::File;
 use std::io::BufReader;
@@ -36,29 +37,27 @@ impl NES {
     /// Initializes the NES emulator by dumping the ROM into memory and
     /// initializing the initial hardware state.
     pub fn new(rom: Vec<u8>, header: INESHeader, runtime_options: NESRuntimeOptions) -> NES {
-        let cpu = CPU::new();
-        let mut memory = Memory::new();
-
         // An offset is used when copying from the ROM into RAM as the presence
         // of a trainer will shift the locations of other structures.
         let mut cursor: usize = 0x10;
 
         // Copy the trainer data to 0x7000 if it exists.
+        let mut memory = Memory::new();
         if header.has_trainer() {
             println!("[init] Trainer data found");
             memory.memdump(TRAINER_START, &rom[0x10..0x210]);
             cursor += TRAINER_SIZE;
         }
 
-        println!("[init] Using {:?} mapper", header.mapper());
-        println!("[init] Using {:?} mirroring", header.mirror_type());
+        log::log("init", format!("Using {:?} mapper", header.mapper()), &runtime_options);
+        log::log("init", format!("Using {:?} mirroring", header.mirror_type()), &runtime_options);
 
         // TODO: Mapper handling?
 
         // Copy PRG-ROM into memory so it can be addressed by the memory mapper.
         if header.prg_rom_size == 2 {
             // There are 2 PRG-ROM banks, copy them to memory.
-            println!("[init] 2 PRG-ROM banks detected");
+            log::log("init", "2 PRG-ROM banks detected", &runtime_options);
             let prg_rom_1_addr = cursor;
             let prg_rom_2_addr = cursor + PRG_ROM_SIZE;
             memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
@@ -66,7 +65,7 @@ impl NES {
         } else {
             // There is only 1 PRG-ROM bank, make the rom addressable at both
             // 0x8000 and 0xC000.
-            println!("[init] 1 PRG-ROM bank detected");
+            log::log("init", "1 PRG-ROM bank detected", &runtime_options);
             let prg_rom_1_addr = cursor;
             memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
             memory.memdump(PRG_ROM_2_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
@@ -74,9 +73,9 @@ impl NES {
 
         NES {
             header: header,
+            cpu: CPU::new(runtime_options.clone()),
             runtime_options: runtime_options,
-            cpu: cpu,
-            memory: memory
+            memory: memory,
         }
     }
 
@@ -121,6 +120,8 @@ impl NES {
     }
 }
 
+#[derive(Clone)]
 pub struct NESRuntimeOptions {
     pub cpu_log: Option<String>,
+    pub verbose: bool,
 }
