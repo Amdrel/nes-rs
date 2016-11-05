@@ -95,8 +95,10 @@ impl Instruction {
             LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
             LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
             NOPImp   => format!("NOP"),
+            PHAImp   => format!("PHA"),
             PHPImp   => format!("PHP"),
             PLAImp   => format!("PLA"),
+            PLPImp   => format!("PLP"),
             RTSImp   => format!("RTS"),
             SECImp   => format!("SEC"),
             SEDImp   => format!("SED"),
@@ -612,6 +614,12 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            PHAImp => {
+                let a = cpu.a;
+                memory.stack_push_u8(cpu, a);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
             PHPImp => {
                 let p = cpu.p | 0x10; // Ensure bit 5 is always set.
                 memory.stack_push_u8(cpu, p);
@@ -623,6 +631,13 @@ impl Instruction {
                 let a = cpu.a;
                 cpu.toggle_zero_flag(a);
                 cpu.toggle_negative_flag(a);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            PLPImp => {
+                let old_flags = cpu.p;
+                let p = (memory.stack_pop_u8(cpu) & 0xEF) | (old_flags & 0x20);
+                cpu.p = p;
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
