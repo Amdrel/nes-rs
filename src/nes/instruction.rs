@@ -60,6 +60,15 @@ impl Instruction {
             BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            BMIRel   => format!("BMI ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            ORAImm   => format!("ORA #${:02X}", self.1),
+            ORAZero  => format!("ORA ${:02X}", self.1),
+            ORAZeroX => format!("ORA ${:02X},X", self.1),
+            ORAAbs   => format!("ORA ${:02X}{:02X}", self.2, self.1),
+            ORAAbsX  => format!("ORA ${:02X}{:02X},X", self.2, self.1),
+            ORAAbsY  => format!("ORA ${:02X}{:02X},Y", self.2, self.1),
+            ORAIndX  => format!("ORA (${:02X},X)", self.1),
+            ORAIndY  => format!("ORA (${:02X}),Y", self.1),
             BITZero  => format!("BIT ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
             BITAbs   => format!("BIT ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             BNERel   => format!("BNE ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
@@ -278,19 +287,41 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            BMIRel => {
+                if cpu.negative_flag_set() {
+                    let old_pc = cpu.pc as usize;
+                    cpu.pc = add_relative(cpu.pc, self.relative());
+                    cpu.cycles += 1;
+                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                        cpu.cycles += 2;
+                    }
+                }
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            ORAImm => {
+                let result = cpu.a | self.immediate();
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
             BITZero => {
-                let result = self.dereference_zero_page(memory) & cpu.a;
+                let byte = self.dereference_zero_page(memory);
+                let result = byte & cpu.a;
                 cpu.toggle_zero_flag(result);
                 let mask = 0xC0;
-                cpu.p = (cpu.p & !mask) | (result & mask);
+                cpu.p = (cpu.p & !mask) | (byte & mask);
                 cpu.cycles += 3;
                 cpu.pc += len;
             },
             BITAbs => {
-                let result = self.dereference_absolute(memory) & cpu.a;
+                let byte = self.dereference_zero_page(memory);
+                let result = byte & cpu.a;
                 cpu.toggle_zero_flag(result);
                 let mask = 0xC0;
-                cpu.p = (cpu.p & !mask) | (result & mask);
+                cpu.p = (cpu.p & !mask) | (byte & mask);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
@@ -369,8 +400,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
@@ -381,8 +415,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 cpu.cycles += 3;
                 cpu.pc += len;
             },
@@ -393,8 +430,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
@@ -405,8 +445,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
@@ -418,8 +461,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
                 }
@@ -434,8 +480,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
                 }
@@ -449,8 +498,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 cpu.cycles += 6;
                 cpu.pc += len;
             },
@@ -462,8 +514,11 @@ impl Instruction {
                 }
                 if cpu.a == arg {
                     cpu.set_zero_flag();
+                    cpu.unset_negative_flag();
+                } else {
+                    let a = cpu.a;
+                    cpu.toggle_negative_flag(a);
                 }
-                cpu.toggle_negative_flag(arg);
                 if page_cross != PageCross::Same {
                     cpu.cycles += 1;
                 }
