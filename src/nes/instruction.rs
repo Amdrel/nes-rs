@@ -307,6 +307,74 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            ORAZero => {
+                let result = cpu.a | self.dereference_zero_page(memory);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            ORAZeroX => {
+                let result = cpu.a | self.dereference_zero_page_x(memory, cpu);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            ORAAbs => {
+                let result = cpu.a | self.dereference_absolute(memory);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            ORAAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                let result = cpu.a | memory.read_u8(addr);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
+            ORAAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                let result = cpu.a | memory.read_u8(addr);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
+            ORAIndX => {
+                let result = cpu.a | self.dereference_indirect_x(memory, cpu);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            ORAIndY => {
+                let (addr, page_cross) = self.indirect_y(cpu, memory);
+                let result = cpu.a | memory.read_u8(addr);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 5;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
             BITZero => {
                 let byte = self.dereference_zero_page(memory);
                 let result = byte & cpu.a;
