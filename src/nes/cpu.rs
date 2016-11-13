@@ -14,8 +14,6 @@ use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Write;
-use std::io::stderr;
 use std::num::ParseIntError;
 use std::u16;
 use std::u8;
@@ -326,13 +324,12 @@ impl CPU {
             if let Some(ref mut execution_log) = self.execution_log {
                 // Read the next line from the log.
                 let mut log_fragment = String::new();
-                execution_log.read_line(&mut log_fragment);
+                execution_log.read_line(&mut log_fragment).unwrap();
 
                 // Parse and compare.
                 let emulator_frame = CPUFrame::parse(raw_fragment.as_str());
                 let log_frame = CPUFrame::parse(log_fragment.as_str());
                 if emulator_frame != log_frame {
-                    let mut stderr = stderr();
                     log::log("error", "FATAL ERROR: Mismatched CPU frames:", &self.runtime_options);
                     log::log("error", format!("Emulator Frame: {}", raw_fragment), &self.runtime_options);
                     log::log("error", format!("Log Frame:      {}", log_fragment), &self.runtime_options);
