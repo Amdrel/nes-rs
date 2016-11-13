@@ -9,15 +9,28 @@ This is a list of my long term goals for the project that I do not expect
 to be done for a long time.
 
 * Make the emulator as accurate as possible
-* Automated testing of the CPU with existing test roms
+* Automated testing of the CPU with existing test roms (mostly done)
 * Automated testing of the PPU (frame by frame compare)
 * RPC-like api to allow external scripts change the emulator state
-* Full featured debugger accessible through a command-line interface
+* Full featured debugger accessible through a command-line interface or network
 
 ## Building and Running
 
 For now the only dependency is rust itself, however this is subject to change
 once I start working on the PPU and I plan to use SDL.
+
+## Current Progress
+
+I am currently working on the CPU which is mostly done at this point. The CPU
+is automatically tested against the nestest ROM with Nintendulator logs in
+order to create a somewhat accurate CPU (Nintendulator is regarded as highly
+accurate). However the implementation of undocumented opcodes is not a high
+priority for me right now.
+
+Once the CPU work is done, I'll begin working on the PPU and proper power reset
+functionality. Before or after that's done I might implement an interactive
+remote debugger if I need to debug any complex problems as the machine state
+cannot be inspected at this time.
 
 ## Literature
 
