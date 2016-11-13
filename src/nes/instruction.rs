@@ -61,6 +61,14 @@ impl Instruction {
             BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
             BMIRel   => format!("BMI ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
+            EORImm   => format!("EOR #${:02X}", self.1),
+            EORZero  => format!("EOR ${:02X}", self.1),
+            EORZeroX => format!("EOR ${:02X},X", self.1),
+            EORAbs   => format!("EOR ${:02X}{:02X}", self.2, self.1),
+            EORAbsX  => format!("EOR ${:02X}{:02X},X", self.2, self.1),
+            EORAbsY  => format!("EOR ${:02X}{:02X},Y", self.2, self.1),
+            EORIndX  => format!("EOR (${:02X},X)", self.1),
+            EORIndY  => format!("EOR (${:02X}),Y", self.1),
             ORAImm   => format!("ORA #${:02X}", self.1),
             ORAZero  => format!("ORA ${:02X}", self.1),
             ORAZeroX => format!("ORA ${:02X},X", self.1),
@@ -297,6 +305,82 @@ impl Instruction {
                     }
                 }
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            EORImm => {
+                let result = cpu.a ^ self.immediate();
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            EORZero => {
+                let result = cpu.a ^ self.dereference_zero_page(memory);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            EORZeroX => {
+                let result = cpu.a ^ self.dereference_zero_page_x(memory, cpu);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            EORAbs => {
+                let result = cpu.a ^ self.dereference_absolute(memory);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            EORAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                let result = cpu.a ^ memory.read_u8(addr);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
+            EORAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                let result = cpu.a ^ memory.read_u8(addr);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.pc += len;
+            },
+            EORIndX => {
+                let result = cpu.a ^ self.dereference_indirect_x(memory, cpu);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            EORIndY => {
+                let (addr, page_cross) = self.indirect_y(cpu, memory);
+                let result = cpu.a ^ memory.read_u8(addr);
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 5;
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
                 cpu.pc += len;
             },
             ORAImm => {
