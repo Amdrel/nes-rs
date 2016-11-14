@@ -12,7 +12,6 @@ use nes::memory::Memory;
 use nes::opcode::Opcode::*;
 use nes::opcode::Opcode;
 use std::io::Cursor;
-use utils::arithmetic;
 
 /// All 6502 instructions are a maximum size of 3 bytes. The first byte is the
 /// opcode which is determines the action of the instruction. The following 2
@@ -556,8 +555,7 @@ impl Instruction {
             },
             ADCImm => {
                 let arg = self.immediate();
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -581,8 +579,7 @@ impl Instruction {
             },
             ADCZero => {
                 let arg = self.dereference_zero_page(memory);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -606,8 +603,7 @@ impl Instruction {
             },
             ADCZeroX => {
                 let arg = self.dereference_zero_page_x(memory, cpu);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -631,8 +627,7 @@ impl Instruction {
             },
             ADCAbs => {
                 let arg = self.dereference_absolute(memory);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -657,8 +652,7 @@ impl Instruction {
             ADCAbsX => {
                 let (addr, page_cross) = self.absolute_x(cpu);
                 let arg = memory.read_u8(addr);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -686,8 +680,7 @@ impl Instruction {
             ADCAbsY => {
                 let (addr, page_cross) = self.absolute_y(cpu);
                 let arg = memory.read_u8(addr);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -714,8 +707,7 @@ impl Instruction {
             },
             ADCIndX => {
                 let arg = self.dereference_indirect_x(memory, cpu);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
@@ -740,8 +732,7 @@ impl Instruction {
             ADCIndY => {
                 let (addr, page_cross) = self.indirect_y(cpu, memory);
                 let arg = memory.read_u8(addr);
-                let mut result = 0;
-                let mut overflow = false;
+                let (result, overflow);
                 if cpu.carry_flag_set() {
                     let (r, o) = cpu.a.overflowing_add(arg.wrapping_add(1));
                     result = r;
