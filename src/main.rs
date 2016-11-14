@@ -13,6 +13,7 @@ extern crate num;
 
 mod io;
 mod nes;
+mod utils;
 
 use getopts::Options;
 use io::binutils::INESHeader;

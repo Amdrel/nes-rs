@@ -17,6 +17,7 @@ use std::io::BufReader;
 use std::num::ParseIntError;
 use std::u16;
 use std::u8;
+use utils::arithmetic;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
 pub const CARRY_FLAG       : u8 = 0x1;
@@ -278,6 +279,17 @@ impl CPU {
         self.p & NEGATIVE_FLAG == NEGATIVE_FLAG
     }
 
+    /// Sets the carry flag if the passed overflow is true, otherwise the flag
+    /// is unset.
+    #[inline(always)]
+    pub fn toggle_carry_flag(&mut self, overflow: bool) {
+        if overflow {
+            self.set_carry_flag();
+        } else {
+            self.unset_carry_flag();
+        }
+    }
+
     /// Sets the zero flag if the value passed (typically a reference to a
     /// register) if the value is zero, otherwise it's unset.
     #[inline(always)]
@@ -293,7 +305,7 @@ impl CPU {
     /// register) if the value is negative, otherwise it's unset.
     #[inline(always)]
     pub fn toggle_negative_flag(&mut self, value: u8) {
-        if is_negative(value) {
+        if arithmetic::is_negative(value) {
             self.set_negative_flag();
         } else {
             self.unset_negative_flag();
@@ -402,14 +414,6 @@ impl CPUFrame {
             sp: try!(u8::from_str_radix(&frame[71..73], 16)),
         })
     }
-}
-
-/// Checks if an unsigned number would be negative if it was signed. This is
-/// done by checking if the 7th bit is set.
-#[inline(always)]
-fn is_negative(arg: u8) -> bool {
-    let negative_bitmask = 0b10000000;
-    arg & negative_bitmask == negative_bitmask
 }
 
 /// Returns "SET" if the passed boolean is true, otherwise "UNSET".
