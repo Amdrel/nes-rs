@@ -103,6 +103,9 @@ impl Instruction {
             CMPAbsY  => format!("CMP ${:02X}{:02X},Y", self.2, self.1),
             CMPIndX  => format!("CMP (${:02X},X)", self.1),
             CMPIndY  => format!("CMP (${:02X}),Y", self.1),
+            CPXImm   => format!("CPX #${:02X}", self.1),
+            CPXZero  => format!("CPX ${:02X}", self.1),
+            CPXAbs   => format!("CPX ${:02X}{:02X}", self.2, self.1),
             CPYImm   => format!("CPY #${:02X}", self.1),
             CPYZero  => format!("CPY ${:02X}", self.1),
             CPYAbs   => format!("CPY ${:02X}{:02X}", self.2, self.1),
@@ -911,6 +914,108 @@ impl Instruction {
                     cpu.cycles += 1;
                 }
                 cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            CPXImm => {
+                let arg = self.immediate();
+                let result = cpu.x.wrapping_sub(arg);
+                if cpu.x >= arg {
+                    cpu.set_carry_flag();
+                } else {
+                    cpu.unset_carry_flag()
+                }
+                if result == 0 {
+                    cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
+                }
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CPXZero => {
+                let arg = self.dereference_zero_page(memory);
+                let result = cpu.x.wrapping_sub(arg);
+                if cpu.x >= arg {
+                    cpu.set_carry_flag();
+                } else {
+                    cpu.unset_carry_flag()
+                }
+                if result == 0 {
+                    cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
+                }
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            CPXAbs => {
+                let arg = self.dereference_absolute(memory);
+                let result = cpu.x.wrapping_sub(arg);
+                if cpu.x >= arg {
+                    cpu.set_carry_flag();
+                } else {
+                    cpu.unset_carry_flag()
+                }
+                if result == 0 {
+                    cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
+                }
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            CPYImm => {
+                let arg = self.immediate();
+                let result = cpu.y.wrapping_sub(arg);
+                if cpu.y >= arg {
+                    cpu.set_carry_flag();
+                } else {
+                    cpu.unset_carry_flag()
+                }
+                if result == 0 {
+                    cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
+                }
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            CPYZero => {
+                let arg = self.dereference_zero_page(memory);
+                let result = cpu.y.wrapping_sub(arg);
+                if cpu.y >= arg {
+                    cpu.set_carry_flag();
+                } else {
+                    cpu.unset_carry_flag()
+                }
+                if result == 0 {
+                    cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
+                }
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            CPYAbs => {
+                let arg = self.dereference_absolute(memory);
+                let result = cpu.y.wrapping_sub(arg);
+                if cpu.y >= arg {
+                    cpu.set_carry_flag();
+                } else {
+                    cpu.unset_carry_flag()
+                }
+                if result == 0 {
+                    cpu.set_zero_flag();
+                } else {
+                    cpu.unset_zero_flag();
+                }
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
                 cpu.pc += len;
             },
             JMPAbs => {
