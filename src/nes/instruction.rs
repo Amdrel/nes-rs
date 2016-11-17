@@ -119,6 +119,11 @@ impl Instruction {
             LDXZeroY => format!("LDX ${:02X},Y", self.1),
             LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
             LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
+            LDYImm   => format!("LDY #${:02X}", self.1),
+            LDYZero  => format!("LDY ${:02X}", self.1),
+            LDYZeroX => format!("LDY ${:02X},X", self.1),
+            LDYAbs   => format!("LDY ${:02X}{:02X}", self.2, self.1),
+            LDYAbsX  => format!("LDY ${:02X}{:02X},X", self.2, self.1),
             NOPImp   => format!("NOP"),
             PHAImp   => format!("PHA"),
             PHPImp   => format!("PHP"),
@@ -1041,6 +1046,50 @@ impl Instruction {
                 let x = cpu.x;
                 cpu.toggle_zero_flag(x);
                 cpu.toggle_negative_flag(x);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDYImm => {
+                cpu.y = self.immediate();
+                let y = cpu.y;
+                cpu.toggle_zero_flag(y);
+                cpu.toggle_negative_flag(y);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            LDYZero => {
+                cpu.y = self.dereference_zero_page(memory);
+                let y = cpu.y;
+                cpu.toggle_zero_flag(y);
+                cpu.toggle_negative_flag(y);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            LDYZeroX => {
+                cpu.y = self.dereference_zero_page_x(memory, cpu);
+                let y = cpu.y;
+                cpu.toggle_zero_flag(y);
+                cpu.toggle_negative_flag(y);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDYAbs => {
+                cpu.y = self.dereference_absolute(memory);
+                let y = cpu.y;
+                cpu.toggle_zero_flag(y);
+                cpu.toggle_negative_flag(y);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            LDYAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                cpu.y = memory.read_u8(addr);
+                let y = cpu.y;
+                cpu.toggle_zero_flag(y);
+                cpu.toggle_negative_flag(y);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
