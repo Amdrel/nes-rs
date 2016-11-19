@@ -177,86 +177,31 @@ impl Memory {
         self.read_u16(STACK_OFFSET + cpu.sp as usize)
     }
 
-    // Memory mapping functions.
-
-    /// Returns true when the provided address is in the provided range
-    /// (inclusive).
-    ///
-    /// NOTE: Inclusive ranges are in unstable rust and this function can be
-    /// replaced once it lands in stable (RFC 1192).
-    fn addr_in_range(&self, addr: usize, lower: usize, upper: usize) -> bool {
-        addr >= lower && addr <= upper
-    }
-
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
     ///
     /// TODO: Add permissions flag for special addresses?
     fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
-        // Address translation for accessing system memory. No modifications
-        // need to be done to the address as it's at the start of addressable
-        // memory.
-        if self.addr_in_range(addr, RAM_START_ADDR, RAM_END_ADDR) {
-            return (&mut self.ram, addr)
+        match addr {
+            RAM_START_ADDR...RAM_END_ADDR =>
+                (&mut self.ram, addr),
+            RAM_MIRROR_START...RAM_MIRROR_END =>
+                (&mut self.ram, addr % RAM_SIZE),
+            PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END =>
+                (&mut self.ppu_ctrl_registers, addr - PPU_CTRL_REGISTERS_START),
+            PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
+                (&mut self.ppu_ctrl_registers, (addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE),
+            MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
+                (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START),
+            EXPANSION_ROM_START...EXPANSION_ROM_END =>
+                (&mut self.expansion_rom, addr - EXPANSION_ROM_START),
+            SRAM_START...SRAM_END =>
+                (&mut self.sram, addr - SRAM_START),
+            PRG_ROM_1_START...PRG_ROM_1_END =>
+                (&mut self.prg_rom_1, addr - PRG_ROM_1_START),
+            PRG_ROM_2_START...PRG_ROM_2_END =>
+                (&mut self.prg_rom_2, addr - PRG_ROM_2_START),
+            _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) }
         }
-
-        // Address translation for mirroring of system memory. System memory at
-        // $0000-$07FF is mirrored at $0800-$0FFF, $1000-$17FF, and $1800-$1FFF
-        // - attempting to access memory at, for example, $0173 is the same as
-        // accessing memory at $0973, $1173, or $1973.
-        if self.addr_in_range(addr, RAM_MIRROR_START, RAM_MIRROR_END) {
-            let new_addr = addr % RAM_SIZE;
-            return (&mut self.ram, new_addr)
-        }
-
-        // Address translation for accessing the PPU control registers.
-        if self.addr_in_range(addr, PPU_CTRL_REGISTERS_START,
-                              PPU_CTRL_REGISTERS_END) {
-            let new_addr = addr - PPU_CTRL_REGISTERS_START;
-            return (&mut self.ppu_ctrl_registers, new_addr)
-        }
-
-        // Address translation for mirroring of the PPU control registers. PPU
-        // control at $2000-$2007 is mirrored 1023 times at $2008-$3FFF.
-        if self.addr_in_range(addr, PPU_CTRL_REGISTERS_MIRROR_START,
-                              PPU_CTRL_REGISTERS_MIRROR_END) {
-            let new_addr = (addr - PPU_CTRL_REGISTERS_START) %
-                PPU_CTRL_REGISTERS_SIZE;
-            return (&mut self.ppu_ctrl_registers, new_addr)
-        }
-
-        // Address translation for miscellaneous registers (such as APU etc).
-        if self.addr_in_range(addr, MISC_CTRL_REGISTERS_START,
-                              MISC_CTRL_REGISTERS_END) {
-            let new_addr = addr - MISC_CTRL_REGISTERS_START;
-            return (&mut self.misc_ctrl_registers, new_addr)
-        }
-
-        // Address translation for accessing cartridge expansion ROM.
-        if self.addr_in_range(addr, EXPANSION_ROM_START, EXPANSION_ROM_END) {
-            let new_addr = addr - EXPANSION_ROM_START;
-            return (&mut self.expansion_rom, new_addr)
-        }
-
-        // Address translation for accessing SRAM.
-        if self.addr_in_range(addr, SRAM_START, SRAM_END) {
-            let new_addr = addr - SRAM_START;
-            return (&mut self.sram, new_addr)
-        }
-
-        // Address translation for accessing the program rom (bank 1).
-        if self.addr_in_range(addr, PRG_ROM_1_START, PRG_ROM_1_END) {
-            let new_addr = addr - PRG_ROM_1_START;
-            return (&mut self.prg_rom_1, new_addr)
-        }
-
-        // Address translation for accessing the program rom (bank 2).
-        if self.addr_in_range(addr, PRG_ROM_2_START, PRG_ROM_2_END) {
-            let new_addr = addr - PRG_ROM_2_START;
-            return (&mut self.prg_rom_2, new_addr)
-        }
-
-        panic!("Unable to map virtual address {:#X} to any physical address",
-               addr);
     }
 }
