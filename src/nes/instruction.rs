@@ -10,8 +10,10 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use nes::cpu::CPU;
 use nes::memory::Memory;
 use nes::opcode::Opcode::*;
-use nes::opcode::Opcode;
+use nes::opcode::{Opcode, opcode_len, decode_opcode};
 use std::io::Cursor;
+use utils::paging::{PageCross, page_cross};
+use utils::arithmetic::{add_relative};
 
 /// All 6502 instructions are a maximum size of 3 bytes. The first byte is the
 /// opcode which is determines the action of the instruction. The following 2
@@ -25,9 +27,6 @@ impl Instruction {
     /// arguments from the wrong addresses (e.g indirect JMP), so those bugs are
     /// emulated accurately here.
     pub fn parse(pc: usize, memory: &mut Memory) -> Instruction {
-        use nes::opcode::decode_opcode;
-        use nes::opcode::opcode_len;
-
         let raw_opcode = memory.read_u8(pc);
         let opcode = decode_opcode(raw_opcode);
         let len = opcode_len(&opcode);
@@ -43,8 +42,6 @@ impl Instruction {
 
     /// Disassembles the instruction into human readable assembly.
     pub fn disassemble(&self, cpu: &CPU, memory: &mut Memory) -> String {
-        use nes::opcode::opcode_len;
-
         let opcode = self.opcode();
         let len = opcode_len(&opcode);
 
@@ -160,7 +157,6 @@ impl Instruction {
     /// checked. Also it may be more appropriate to move this function into the
     /// CPU.
     pub fn log(&self, cpu: &CPU, memory: &mut Memory) -> String {
-        use nes::opcode::opcode_len;
         let opcode = self.opcode();
         let len = opcode_len(&opcode) as u16;
 
@@ -195,8 +191,6 @@ impl Instruction {
     /// are present here.
     #[inline(always)]
     pub fn execute(&self, cpu: &mut CPU, memory: &mut Memory) {
-        use nes::opcode::opcode_len;
-
         let opcode = self.opcode();
         let len = opcode_len(&opcode) as u16;
 
@@ -1508,52 +1502,5 @@ impl Instruction {
     fn dereference_indirect_y(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
         let addr = self.indirect_y(cpu, memory).0;
         memory.read_u8(addr)
-    }
-}
-
-#[derive(PartialEq)]
-enum PageCross {
-    Same,
-    Backwards,
-    Forwards,
-}
-
-// Additional utility functions used often in instruction logic.
-// TODO: Should this be moved somewhere else?
-
-/// Returns the page index of the given address. Each memory page for the
-/// 6502 is 256 (FF) bytes in size and is relevant because some instructions
-/// need extra cycles to use addresses in different pages.
-#[inline(always)]
-fn page(addr: usize) -> u8 {
-    (addr as u16 >> 8) as u8
-}
-
-/// Determine if there was a page cross between the addresses and what
-/// direction was crossed. Most instructions don't care which direction the
-/// page cross was in so those instructions will check for either forwards
-/// or backwards.
-#[inline(always)]
-fn page_cross(addr1: usize, addr2: usize) -> PageCross {
-    let page1 = page(addr1);
-    let page2 = page(addr2);
-
-    if page1 > page2 {
-        PageCross::Backwards
-    } else if page1 < page2 {
-        PageCross::Forwards
-    } else {
-        PageCross::Same
-    }
-}
-
-/// Adds a relative displacement to an address. This is useful for operations
-/// using relative addressing that allow branching forwards or backwards.
-#[inline(always)]
-fn add_relative(base_addr: u16, displacement: i8) -> u16 {
-    if displacement < 0 {
-        base_addr.wrapping_sub(-(displacement) as u16)
-    } else {
-        base_addr.wrapping_add(displacement as u16)
     }
 }

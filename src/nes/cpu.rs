@@ -322,11 +322,11 @@ impl CPU {
     /// currently points execute it. All instruction logic is in instruction.rs.
     pub fn execute(&mut self, memory: &mut Memory) {
         let instr = Instruction::parse(self.pc as usize, memory);
-
         if self.runtime_options.verbose || self.execution_log.is_some() {
             let raw_fragment = instr.log(self, memory);
 
-            // Print the log fragment only if verbose mode is enabled.
+            // Print the log fragment only if verbose mode is enabled. Logs are
+            // formatted like Nintendulator logs.
             if self.runtime_options.verbose {
                 log::log("cpu", format!("{}", raw_fragment), &self.runtime_options);
             }
@@ -338,10 +338,8 @@ impl CPU {
                 let mut log_fragment = String::new();
                 execution_log.read_line(&mut log_fragment).unwrap();
 
-                // Parse and compare.
-                let emulator_frame = CPUFrame::parse(raw_fragment.as_str());
-                let log_frame = CPUFrame::parse(log_fragment.as_str());
-                if emulator_frame != log_frame {
+                // Parse and compare both of the CPU frames.
+                if CPUFrame::parse(raw_fragment.as_str()) != CPUFrame::parse(log_fragment.as_str()) {
                     log::log("error", "FATAL ERROR: Mismatched CPU frames:", &self.runtime_options);
                     log::log("error", format!("Emulator Frame: {}", raw_fragment), &self.runtime_options);
                     log::log("error", format!("Log Frame:      {}", log_fragment), &self.runtime_options);
@@ -349,8 +347,13 @@ impl CPU {
                 }
             }
         }
-
         instr.execute(self, memory);
+    }
+
+    /// Returns "SET" if the passed boolean is true, otherwise "UNSET". This
+    /// function is used to display flags when the CPU crashes.
+    fn fmt_flag(flag: bool) -> &'static str {
+        if flag { "SET" } else { "UNSET" }
     }
 }
 
@@ -364,17 +367,19 @@ impl fmt::Display for CPU {
         writeln!(f, "    Y Register:      {:#X}", self.y).unwrap();
         writeln!(f, "").unwrap();
         writeln!(f, "Status Register: {:#X}", self.p).unwrap();
-        writeln!(f, "    Carry Flag:        {}", fmt_flag(self.carry_flag_set())).unwrap();
-        writeln!(f, "    Zero Flag:         {}", fmt_flag(self.zero_flag_set())).unwrap();
-        writeln!(f, "    Interrupt Disable: {}", fmt_flag(self.interrupt_disable_set())).unwrap();
-        writeln!(f, "    Decimal Mode:      {}", fmt_flag(self.decimal_mode_set())).unwrap();
-        writeln!(f, "    Break Command:     {}", fmt_flag(self.break_command_set())).unwrap();
-        writeln!(f, "    Overflow Flag:     {}", fmt_flag(self.overflow_flag_set())).unwrap();
-        writeln!(f, "    Negative Flag:     {}", fmt_flag(self.negative_flag_set()))
+        writeln!(f, "    Carry Flag:        {}", CPU::fmt_flag(self.carry_flag_set())).unwrap();
+        writeln!(f, "    Zero Flag:         {}", CPU::fmt_flag(self.zero_flag_set())).unwrap();
+        writeln!(f, "    Interrupt Disable: {}", CPU::fmt_flag(self.interrupt_disable_set())).unwrap();
+        writeln!(f, "    Decimal Mode:      {}", CPU::fmt_flag(self.decimal_mode_set())).unwrap();
+        writeln!(f, "    Break Command:     {}", CPU::fmt_flag(self.break_command_set())).unwrap();
+        writeln!(f, "    Overflow Flag:     {}", CPU::fmt_flag(self.overflow_flag_set())).unwrap();
+        writeln!(f, "    Negative Flag:     {}", CPU::fmt_flag(self.negative_flag_set()))
     }
 }
 
-/// CPU state for use during automated CPU testing.
+/// CPU state for use during automated CPU testing. These values are contained
+/// inside of Nintendulator logs and used for comparing log frames to test CPU
+/// accuracy.
 #[derive(Debug, PartialEq)]
 struct CPUFrame {
     instruction: Instruction,
@@ -388,20 +393,14 @@ struct CPUFrame {
 }
 
 impl CPUFrame {
+    /// Parses a Nintendulator log frame and packs the parsed values into a
+    /// structure. The structure can then be compared using the PartialEq trait.
     pub fn parse(frame: &str) -> Result<CPUFrame, ParseIntError> {
-        let word_1 = match u8::from_str_radix(&frame[6..8], 16) {
-            Ok(num) => num,
-            Err(_) => 0,
-        };
-        let word_2 = match u8::from_str_radix(&frame[9..11], 16) {
-            Ok(num) => num,
-            Err(_) => 0,
-        };
-        let word_3 = match u8::from_str_radix(&frame[12..14], 16) {
-            Ok(num) => num,
-            Err(_) => 0,
-        };
-        let instr = Instruction(word_1, word_2, word_3);
+        // Nintendulator stores instructions as 8-bit hex in the log frame.
+        let instr = Instruction(
+            CPUFrame::extract_word(&frame[6..8]),
+            CPUFrame::extract_word(&frame[9..11]),
+            CPUFrame::extract_word(&frame[12..14]));
 
         Ok(CPUFrame {
             instruction: instr,
@@ -414,9 +413,12 @@ impl CPUFrame {
             sp: try!(u8::from_str_radix(&frame[71..73], 16)),
         })
     }
-}
 
-/// Returns "SET" if the passed boolean is true, otherwise "UNSET".
-fn fmt_flag(flag: bool) -> &'static str {
-    if flag { "SET" } else { "UNSET" }
+    /// Parses a hex encoded 8-bit integer.
+    fn extract_word(slice: &str) -> u8 {
+        match u8::from_str_radix(slice, 16) {
+            Ok(num) => num,
+            Err(_) => 0,
+        }
+    }
 }
