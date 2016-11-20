@@ -92,6 +92,14 @@ impl Instruction {
             ADCAbsY  => format!("ADC ${:02X}{:02X},Y", self.2, self.1),
             ADCIndX  => format!("ADC (${:02X},X)", self.1),
             ADCIndY  => format!("ADC (${:02X}),Y", self.1),
+            SBCImm   => format!("SBC #${:02X}", self.1),
+            SBCZero  => format!("SBC ${:02X}", self.1),
+            SBCZeroX => format!("SBC ${:02X},X", self.1),
+            SBCAbs   => format!("SBC ${:02X}{:02X}", self.2, self.1),
+            SBCAbsX  => format!("SBC ${:02X}{:02X},X", self.2, self.1),
+            SBCAbsY  => format!("SBC ${:02X}{:02X},Y", self.2, self.1),
+            SBCIndX  => format!("SBC (${:02X},X)", self.1),
+            SBCIndY  => format!("SBC (${:02X}),Y", self.1),
             CMPImm   => format!("CMP #${:02X}", self.1),
             CMPZero  => format!("CMP ${:02X}", self.1),
             CMPZeroX => format!("CMP ${:02X},X", self.1),
@@ -754,6 +762,210 @@ impl Instruction {
                 }
                 cpu.a = result;
                 cpu.toggle_carry_flag(overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            SBCImm => {
+                let arg = self.immediate();
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            SBCZero => {
+                let arg = self.dereference_zero_page(memory);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            SBCZeroX => {
+                let arg = self.dereference_zero_page_x(memory, cpu);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            SBCAbs => {
+                let arg = self.dereference_absolute(memory);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            SBCAbsX => {
+                let (addr, page_cross) = self.absolute_x(cpu);
+                let arg = memory.read_u8(addr);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            SBCAbsY => {
+                let (addr, page_cross) = self.absolute_y(cpu);
+                let arg = memory.read_u8(addr);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                if page_cross != PageCross::Same {
+                    cpu.cycles += 1;
+                }
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            SBCIndX => {
+                let arg = self.dereference_indirect_x(memory, cpu);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            SBCIndY => {
+                let (addr, page_cross) = self.indirect_y(cpu, memory);
+                let arg = memory.read_u8(addr);
+                let (result, overflow);
+                if !cpu.carry_flag_set() {
+                    let (r, o) = cpu.a.overflowing_sub(arg.wrapping_add(1));
+                    result = r;
+                    overflow = o;
+                } else {
+                    let (r, o) = cpu.a.overflowing_sub(arg);
+                    result = r;
+                    overflow = o;
+                }
+                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                    cpu.set_overflow_flag();
+                } else {
+                    cpu.unset_overflow_flag();
+                }
+                cpu.a = result;
+                cpu.toggle_carry_flag(!overflow);
                 cpu.toggle_zero_flag(result);
                 cpu.toggle_negative_flag(result);
                 if page_cross != PageCross::Same {
