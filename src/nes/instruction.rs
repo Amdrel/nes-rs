@@ -132,7 +132,7 @@ impl Instruction {
             LDXImm   => format!("LDX #${:02X}", self.1),
             LDXZero  => format!("LDX ${:02X}", self.1),
             LDXZeroY => format!("LDX ${:02X},Y", self.1),
-            LDXAbs   => format!("LDX ${:02X}{:02X}", self.2, self.1),
+            LDXAbs   => format!("LDX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             LDXAbsY  => format!("LDX ${:02X}{:02X},Y", self.2, self.1),
             LDYImm   => format!("LDY #${:02X}", self.1),
             LDYZero  => format!("LDY ${:02X}", self.1),
