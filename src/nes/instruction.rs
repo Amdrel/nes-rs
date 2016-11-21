@@ -132,8 +132,8 @@ impl Instruction {
             LDXImm   => format!("LDX #${:02X}", self.1),
             LDXZero  => format!("LDX ${:02X}", self.1),
             LDXZeroY => format!("LDX ${:02X},Y", self.1),
-            LDXAbs   => format!("LDX ${:02X}${:02X}", self.2, self.1),
-            LDXAbsY  => format!("LDX ${:02X}${:02X},Y", self.2, self.1),
+            LDXAbs   => format!("LDX ${:02X}{:02X}", self.2, self.1),
+            LDXAbsY  => format!("LDX ${:02X}{:02X},Y", self.2, self.1),
             LDYImm   => format!("LDY #${:02X}", self.1),
             LDYZero  => format!("LDY ${:02X}", self.1),
             LDYZeroX => format!("LDY ${:02X},X", self.1),
@@ -160,7 +160,9 @@ impl Instruction {
             STXAbs   => format!("STX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             TAXImp   => format!("TAX"),
             TAYImp   => format!("TAY"),
+            TSXImp   => format!("TSX"),
             TXAImp   => format!("TXA"),
+            TXSImp   => format!("TXS"),
             TYAImp   => format!("TYA"),
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
@@ -1566,11 +1568,25 @@ impl Instruction {
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
+            TSXImp => {
+                let result = cpu.sp;
+                cpu.x = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
             TXAImp => {
                 let result = cpu.x;
                 cpu.a = result;
                 cpu.toggle_zero_flag(result);
                 cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            TXSImp => {
+                let result = cpu.x;
+                cpu.sp = result;
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
