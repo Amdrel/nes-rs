@@ -114,7 +114,10 @@ impl Instruction {
             CPYImm   => format!("CPY #${:02X}", self.1),
             CPYZero  => format!("CPY ${:02X}", self.1),
             CPYAbs   => format!("CPY ${:02X}{:02X}", self.2, self.1),
+            INXImp   => format!("INX"),
             INYImp   => format!("INY"),
+            DEXImp   => format!("DEX"),
+            DEYImp   => format!("DEY"),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -155,6 +158,10 @@ impl Instruction {
             STXZero  => format!("STX ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
             STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, self.dereference_zero_page_y(memory, cpu)),
             STXAbs   => format!("STX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
+            TAXImp   => format!("TAX"),
+            TAYImp   => format!("TAY"),
+            TXAImp   => format!("TXA"),
+            TYAImp   => format!("TYA"),
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
     }
@@ -1225,8 +1232,32 @@ impl Instruction {
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
+            INXImp => {
+                let result = cpu.x.wrapping_add(1);
+                cpu.x = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
             INYImp => {
                 let result = cpu.y.wrapping_add(1);
+                cpu.y = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            DEXImp => {
+                let result = cpu.x.wrapping_sub(1);
+                cpu.x = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            DEYImp => {
+                let result = cpu.y.wrapping_sub(1);
                 cpu.y = result;
                 cpu.toggle_zero_flag(result);
                 cpu.toggle_negative_flag(result);
@@ -1517,6 +1548,38 @@ impl Instruction {
             STXAbs => {
                 memory.write_u8(self.absolute(), cpu.x);
                 cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            TAXImp => {
+                let result = cpu.a;
+                cpu.x = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            TAYImp => {
+                let result = cpu.a;
+                cpu.y = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            TXAImp => {
+                let result = cpu.x;
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            TYAImp => {
+                let result = cpu.y;
+                cpu.a = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
                 cpu.pc += len;
             },
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
