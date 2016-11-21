@@ -114,6 +114,7 @@ impl Instruction {
             CPYImm   => format!("CPY #${:02X}", self.1),
             CPYZero  => format!("CPY ${:02X}", self.1),
             CPYAbs   => format!("CPY ${:02X}{:02X}", self.2, self.1),
+            INYImp   => format!("INY"),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -782,7 +783,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -806,7 +807,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -830,7 +831,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -854,7 +855,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -879,7 +880,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -907,7 +908,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -934,7 +935,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -959,7 +960,7 @@ impl Instruction {
                     result = r;
                     overflow = o;
                 }
-                if !(cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
+                if (cpu.a ^ arg) & (cpu.a ^ result) & 0x80 == 0x80 {
                     cpu.set_overflow_flag();
                 } else {
                     cpu.unset_overflow_flag();
@@ -1222,6 +1223,14 @@ impl Instruction {
                 }
                 cpu.toggle_negative_flag(result);
                 cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            INYImp => {
+                let result = cpu.y.wrapping_add(1);
+                cpu.y = result;
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
                 cpu.pc += len;
             },
             JMPAbs => {
