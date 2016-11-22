@@ -124,7 +124,7 @@ impl Instruction {
             LDAImm   => format!("LDA #${:02X}", self.1),
             LDAZero  => format!("LDA ${:02X}", self.1),
             LDAZeroX => format!("LDA ${:02X},X", self.1),
-            LDAAbs   => format!("LDA ${:02X}{:02X}", self.2, self.1),
+            LDAAbs   => format!("LDA ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             LDAAbsX  => format!("LDA ${:02X}{:02X},X", self.2, self.1),
             LDAAbsY  => format!("LDA ${:02X}{:02X},Y", self.2, self.1),
             LDAIndX  => format!("LDA (${:02X},X)", self.1),

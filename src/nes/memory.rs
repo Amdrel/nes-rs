@@ -110,8 +110,8 @@ impl Memory {
     pub fn read_u16(&mut self, addr: usize) -> u16 {
         // Reads two bytes starting at the given address and parses them.
         let mut reader = Cursor::new(vec![
-            self.read_u8(addr),
-            self.read_u8(addr + 1)
+            self.read_u8(addr - 1),
+            self.read_u8(addr)
         ]);
         reader.read_u16::<LittleEndian>().unwrap()
     }
@@ -122,11 +122,11 @@ impl Memory {
     /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
     #[inline(always)]
     pub fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16 {
-        let lsb = self.read_u8(addr);
+        let lsb = self.read_u8(addr - 1);
         let msb = if addr & 0xFF == 0xFF {
             self.read_u8(addr - 0xFF)
         } else {
-            self.read_u8(addr + 1)
+            self.read_u8(addr)
         };
 
         // Reads two bytes starting at the given address and parses them.
@@ -140,8 +140,8 @@ impl Memory {
     pub fn write_u16(&mut self, addr: usize, val: u16) {
         let mut writer = vec![];
         writer.write_u16::<LittleEndian>(val).unwrap();
-        self.write_u8(addr, writer[0]);
-        self.write_u8(addr + 1, writer[1]);
+        self.write_u8(addr - 1, writer[0]);
+        self.write_u8(addr, writer[1]);
     }
 
     /// Dumps the contents of a slice starting at a given address.
