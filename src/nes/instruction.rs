@@ -144,6 +144,7 @@ impl Instruction {
             PHPImp   => format!("PHP"),
             PLAImp   => format!("PLA"),
             PLPImp   => format!("PLP"),
+            RTIImp   => format!("RTI"),
             RTSImp   => format!("RTS"),
             SECImp   => format!("SEC"),
             SEDImp   => format!("SED"),
@@ -1480,6 +1481,12 @@ impl Instruction {
                 cpu.p = p;
                 cpu.cycles += 4;
                 cpu.pc += len;
+            },
+            RTIImp => {
+                let result = (memory.stack_pop_u8(cpu) & 0xEF) | (cpu.p & 0x20);
+                cpu.p = result;
+                cpu.pc = memory.stack_pop_u16(cpu);
+                cpu.cycles += 6;
             },
             RTSImp => {
                 cpu.pc = memory.stack_pop_u16(cpu) + len;
