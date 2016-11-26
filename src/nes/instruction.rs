@@ -119,6 +119,10 @@ impl Instruction {
             DEXImp   => format!("DEX"),
             DEYImp   => format!("DEY"),
             LSRAcc   => format!("LSR A"),
+            LSRZero  => format!("LSR ${:02X}", self.1),
+            LSRZeroX => format!("LSR ${:02X},X", self.1),
+            LSRAbs   => format!("LSR ${:02X}{:02X}", self.2, self.1),
+            LSRAbsX  => format!("LSR ${:02X}{:02X},X", self.2, self.1),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -1276,6 +1280,54 @@ impl Instruction {
                 cpu.toggle_negative_flag(result);
                 cpu.a = result;
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            LSRZero => {
+                let addr = self.zero_page();
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x1 == 0x1;
+                let result = mem >> 1;
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            LSRZeroX => {
+                let addr = self.zero_page_x(cpu);
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x1 == 0x1;
+                let result = mem >> 1;
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            LSRAbs => {
+                let addr = self.absolute();
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x1 == 0x1;
+                let result = mem >> 1;
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            LSRAbsX => {
+                let (addr, _) = self.absolute_x(cpu);
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x1 == 0x1;
+                let result = mem >> 1;
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 7;
                 cpu.pc += len;
             },
             JMPAbs => {
