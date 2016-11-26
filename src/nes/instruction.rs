@@ -128,6 +128,11 @@ impl Instruction {
             LSRZeroX => format!("LSR ${:02X},X", self.1),
             LSRAbs   => format!("LSR ${:02X}{:02X}", self.2, self.1),
             LSRAbsX  => format!("LSR ${:02X}{:02X},X", self.2, self.1),
+            ROLAcc   => format!("ROL A"),
+            ROLZero  => format!("ROL ${:02X}", self.1),
+            ROLZeroX => format!("ROL ${:02X},X", self.1),
+            ROLAbs   => format!("ROL ${:02X}{:02X}", self.2, self.1),
+            ROLAbsX  => format!("ROL ${:02X}{:02X},X", self.2, self.1),
             RORAcc   => format!("ROR A"),
             RORZero  => format!("ROR ${:02X}", self.1),
             RORZeroX => format!("ROR ${:02X},X", self.1),
@@ -1449,6 +1454,64 @@ impl Instruction {
                 let mem = memory.read_u8(addr);
                 let carry = mem & 0x1 == 0x1;
                 let result = (mem >> 1) | (cpu.p << 7);
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 7;
+                cpu.pc += len;
+            },
+            ROLAcc => {
+                let carry = cpu.a & 0x80 == 0x80;
+                let result = (cpu.a << 1) | (cpu.p & 0x1);
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.a = result;
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            ROLZero => {
+                let addr = self.zero_page();
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x80 == 0x80;
+                let result = (mem << 1) | (cpu.p & 0x1);
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            ROLZeroX => {
+                let addr = self.zero_page_x(cpu);
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x80 == 0x80;
+                let result = (mem << 1) | (cpu.p & 0x1);
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            ROLAbs => {
+                let addr = self.absolute();
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x80 == 0x80;
+                let result = (mem << 1) | (cpu.p & 0x1);
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                memory.write_u8(addr, result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            ROLAbsX => {
+                let (addr, _) = self.absolute_x(cpu);
+                let mem = memory.read_u8(addr);
+                let carry = mem & 0x80 == 0x80;
+                let result = (mem << 1) | (cpu.p & 0x1);
                 cpu.toggle_carry_flag(carry);
                 cpu.toggle_zero_flag(result);
                 cpu.toggle_negative_flag(result);
