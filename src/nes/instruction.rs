@@ -118,6 +118,7 @@ impl Instruction {
             INYImp   => format!("INY"),
             DEXImp   => format!("DEX"),
             DEYImp   => format!("DEY"),
+            LSRAcc   => format!("LSR A"),
             JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
@@ -1264,6 +1265,16 @@ impl Instruction {
                 cpu.y = result;
                 cpu.toggle_zero_flag(result);
                 cpu.toggle_negative_flag(result);
+                cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            LSRAcc => {
+                let carry = cpu.a & 0x1 == 0x1;
+                let result = cpu.a >> 1;
+                cpu.toggle_carry_flag(carry);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.a = result;
                 cpu.cycles += 2;
                 cpu.pc += len;
             },
