@@ -110,6 +110,18 @@ impl Memory {
     pub fn read_u16(&mut self, addr: usize) -> u16 {
         // Reads two bytes starting at the given address and parses them.
         let mut reader = Cursor::new(vec![
+            self.read_u8(addr),
+            self.read_u8(addr + 1)
+        ]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian).
+    #[inline(always)]
+    pub fn read_u16_alt(&mut self, addr: usize) -> u16 {
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![
             self.read_u8(addr - 1),
             self.read_u8(addr)
         ]);
@@ -122,6 +134,24 @@ impl Memory {
     /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
     #[inline(always)]
     pub fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16 {
+        let lsb = self.read_u8(addr);
+        let msb = if addr & 0xFF == 0xFF {
+            self.read_u8(addr - 0xFF)
+        } else {
+            self.read_u8(addr + 1)
+        };
+
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![lsb, msb]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian) where the MSB is read at page start if the LSB is at
+    /// the end of a page. This exists to properly emulate a hardware bug in the
+    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
+    #[inline(always)]
+    pub fn read_u16_wrapped_msb_alt(&mut self, addr: usize) -> u16 {
         let lsb = self.read_u8(addr - 1);
         let msb = if addr & 0xFF == 0xFF {
             self.read_u8(addr - 0xFF)
@@ -138,6 +168,16 @@ impl Memory {
     /// (little-endian)
     #[inline(always)]
     pub fn write_u16(&mut self, addr: usize, val: u16) {
+        let mut writer = vec![];
+        writer.write_u16::<LittleEndian>(val).unwrap();
+        self.write_u8(addr, writer[0]);
+        self.write_u8(addr + 1, writer[1]);
+    }
+
+    /// Writes an unsigned 16-bit byte value to the given virtual address
+    /// (little-endian)
+    #[inline(always)]
+    pub fn write_u16_alt(&mut self, addr: usize, val: u16) {
         let mut writer = vec![];
         writer.write_u16::<LittleEndian>(val).unwrap();
         self.write_u8(addr - 1, writer[0]);
@@ -167,14 +207,14 @@ impl Memory {
 
     /// Pushes a 16-bit number (usually an address) onto the stack.
     pub fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16) {
-        self.write_u16(STACK_OFFSET + cpu.sp as usize, value);
+        self.write_u16_alt(STACK_OFFSET + cpu.sp as usize, value);
         cpu.sp = cpu.sp.wrapping_sub(2);
     }
 
     /// Pops a 16-bit number (usually an address) off the stack.
     pub fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
         cpu.sp = cpu.sp.wrapping_add(2);
-        self.read_u16(STACK_OFFSET + cpu.sp as usize)
+        self.read_u16_alt(STACK_OFFSET + cpu.sp as usize)
     }
 
     /// Maps a given virtual address to a physical address internal to the

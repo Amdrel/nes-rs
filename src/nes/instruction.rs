@@ -142,12 +142,12 @@ impl Instruction {
             JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
             JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
             LDAImm   => format!("LDA #${:02X}", self.1),
-            LDAZero  => format!("LDA ${:02X}", self.1),
+            LDAZero  => format!("LDA ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
             LDAZeroX => format!("LDA ${:02X},X", self.1),
             LDAAbs   => format!("LDA ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
             LDAAbsX  => format!("LDA ${:02X}{:02X},X", self.2, self.1),
             LDAAbsY  => format!("LDA ${:02X}{:02X},Y", self.2, self.1),
-            LDAIndX  => format!("LDA (${:02X},X)", self.1),
+            LDAIndX  => format!("LDA (${:02X},X) @ {:02X} = {:04X} = {:02X}", self.1, self.1.wrapping_add(cpu.x), self.indirect_x(cpu, memory).0, self.dereference_indirect_x(memory, cpu)),
             LDAIndY  => format!("LDA (${:02X}),Y", self.1),
             LDXImm   => format!("LDX #${:02X}", self.1),
             LDXZero  => format!("LDX ${:02X}", self.1),
@@ -1528,7 +1528,7 @@ impl Instruction {
                 // due to a bug in the indirect JMP operation.
                 // https://github.com/Reshurum/nes-rs/issues/3
                 let arg = self.arg_u16() as usize;
-                cpu.pc = memory.read_u16_wrapped_msb(arg);
+                cpu.pc = memory.read_u16_wrapped_msb_alt(arg);
                 cpu.cycles += 5;
             },
             JSRAbs => {
@@ -1986,7 +1986,7 @@ impl Instruction {
         let arg = self.arg_u8();
         let addr = arg.wrapping_add(cpu.x) as usize;
         let page_cross = page_cross(arg as usize, addr);
-        (memory.read_u16(addr) as usize, page_cross)
+        (memory.read_u16_wrapped_msb(addr) as usize, page_cross)
     }
 
     /// Sane version of indirect_x that gets the zero page address in the
