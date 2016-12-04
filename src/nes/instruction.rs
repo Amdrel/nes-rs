@@ -46,7 +46,7 @@ impl Instruction {
         let len = opcode_len(&opcode);
 
         match opcode {
-            ANDImm   => format!("AND #${:02X}", self.1),
+            ANDImm   => self.disassemble_immediate("AND"),
             ANDZero  => format!("AND ${:02X}", self.1),
             ANDZeroX => format!("AND ${:02X},X", self.1),
             ANDAbs   => format!("AND ${:02X}{:02X}", self.2, self.1),
@@ -1864,7 +1864,6 @@ impl Instruction {
     /// Obtain the opcode of the instruction.
     #[inline(always)]
     fn opcode(&self) -> Opcode {
-        use nes::opcode::decode_opcode;
         decode_opcode(self.0)
     }
 
@@ -2061,5 +2060,31 @@ impl Instruction {
     fn dereference_indirect_y(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
         let addr = self.indirect_y(cpu, memory).0;
         memory.read_u8(addr)
+    }
+
+    // Functions for aiding in disassembly. Each addressing mode has it's own
+    // disassembly format in Nintendulator logs. These functions simply fill in
+    // the blanks with provided parameters.
+
+    /// Disassembles the instruction as if it's using immediate addressing.
+    #[inline(always)]
+    fn disassemble_immediate(&self, instr: &str) -> String {
+        format!("{} #${:02X}", instr, self.1)
+    }
+
+    /// Disassembles the instruction as if it's using zero page addressing.
+    #[inline(always)]
+    fn disassemble_zero_page(&self, instr: &str) -> String {
+        format!("{} ${:02X}", instr, self.1)
+    }
+
+    #[inline(always)]
+    fn disassemble_zero_page_x(&self, instr &str) -> String {
+        format!("{} ${:02X},X", instr, self.1)
+    }
+
+    #[inline(always)]
+    fn disassemble_zero_page_y(&self, instr &str) -> String {
+        format!("{} ${:02X},Y", instr, self.1)
     }
 }
