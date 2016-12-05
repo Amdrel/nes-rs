@@ -47,144 +47,144 @@ impl Instruction {
 
         match opcode {
             ANDImm   => self.disassemble_immediate("AND"),
-            ANDZero  => format!("AND ${:02X}", self.1),
-            ANDZeroX => format!("AND ${:02X},X", self.1),
-            ANDAbs   => format!("AND ${:02X}{:02X}", self.2, self.1),
-            ANDAbsX  => format!("AND ${:02X}{:02X},X", self.2, self.1),
-            ANDAbsY  => format!("AND ${:02X}{:02X},Y", self.2, self.1),
-            ANDIndX  => format!("AND (${:02X},X)", self.1),
-            ANDIndY  => format!("AND (${:02X}),Y", self.1),
-            BCCRel   => format!("BCC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            BCSRel   => format!("BCS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            BEQRel   => format!("BEQ ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            BMIRel   => format!("BMI ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            EORImm   => format!("EOR #${:02X}", self.1),
-            EORZero  => format!("EOR ${:02X}", self.1),
-            EORZeroX => format!("EOR ${:02X},X", self.1),
-            EORAbs   => format!("EOR ${:02X}{:02X}", self.2, self.1),
-            EORAbsX  => format!("EOR ${:02X}{:02X},X", self.2, self.1),
-            EORAbsY  => format!("EOR ${:02X}{:02X},Y", self.2, self.1),
-            EORIndX  => format!("EOR (${:02X},X)", self.1),
-            EORIndY  => format!("EOR (${:02X}),Y", self.1),
-            ORAImm   => format!("ORA #${:02X}", self.1),
-            ORAZero  => format!("ORA ${:02X}", self.1),
-            ORAZeroX => format!("ORA ${:02X},X", self.1),
-            ORAAbs   => format!("ORA ${:02X}{:02X}", self.2, self.1),
-            ORAAbsX  => format!("ORA ${:02X}{:02X},X", self.2, self.1),
-            ORAAbsY  => format!("ORA ${:02X}{:02X},Y", self.2, self.1),
-            ORAIndX  => format!("ORA (${:02X},X)", self.1),
-            ORAIndY  => format!("ORA (${:02X}),Y", self.1),
-            BITZero  => format!("BIT ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
-            BITAbs   => format!("BIT ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
-            BNERel   => format!("BNE ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            BPLRel   => format!("BPL ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            BVCRel   => format!("BVC ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            BVSRel   => format!("BVS ${:04X}", add_relative(cpu.pc, self.relative()) + len as u16),
-            CLCImp   => format!("CLC"),
-            CLDImp   => format!("CLD"),
-            CLIImp   => format!("CLI"),
-            CLVImp   => format!("CLV"),
-            ADCImm   => format!("ADC #${:02X}", self.1),
-            ADCZero  => format!("ADC ${:02X}", self.1),
-            ADCZeroX => format!("ADC ${:02X},X", self.1),
-            ADCAbs   => format!("ADC ${:02X}{:02X}", self.2, self.1),
-            ADCAbsX  => format!("ADC ${:02X}{:02X},X", self.2, self.1),
-            ADCAbsY  => format!("ADC ${:02X}{:02X},Y", self.2, self.1),
-            ADCIndX  => format!("ADC (${:02X},X)", self.1),
-            ADCIndY  => format!("ADC (${:02X}),Y", self.1),
-            SBCImm   => format!("SBC #${:02X}", self.1),
-            SBCZero  => format!("SBC ${:02X}", self.1),
-            SBCZeroX => format!("SBC ${:02X},X", self.1),
-            SBCAbs   => format!("SBC ${:02X}{:02X}", self.2, self.1),
-            SBCAbsX  => format!("SBC ${:02X}{:02X},X", self.2, self.1),
-            SBCAbsY  => format!("SBC ${:02X}{:02X},Y", self.2, self.1),
-            SBCIndX  => format!("SBC (${:02X},X)", self.1),
-            SBCIndY  => format!("SBC (${:02X}),Y", self.1),
-            CMPImm   => format!("CMP #${:02X}", self.1),
-            CMPZero  => format!("CMP ${:02X}", self.1),
-            CMPZeroX => format!("CMP ${:02X},X", self.1),
-            CMPAbs   => format!("CMP ${:02X}{:02X}", self.2, self.1),
-            CMPAbsX  => format!("CMP ${:02X}{:02X},X", self.2, self.1),
-            CMPAbsY  => format!("CMP ${:02X}{:02X},Y", self.2, self.1),
-            CMPIndX  => format!("CMP (${:02X},X)", self.1),
-            CMPIndY  => format!("CMP (${:02X}),Y", self.1),
-            CPXImm   => format!("CPX #${:02X}", self.1),
-            CPXZero  => format!("CPX ${:02X}", self.1),
-            CPXAbs   => format!("CPX ${:02X}{:02X}", self.2, self.1),
-            CPYImm   => format!("CPY #${:02X}", self.1),
-            CPYZero  => format!("CPY ${:02X}", self.1),
-            CPYAbs   => format!("CPY ${:02X}{:02X}", self.2, self.1),
-            INXImp   => format!("INX"),
-            INYImp   => format!("INY"),
-            DEXImp   => format!("DEX"),
-            DEYImp   => format!("DEY"),
-            ASLAcc   => format!("ASL A"),
-            ASLZero  => format!("ASL ${:02X}", self.1),
-            ASLZeroX => format!("ASL ${:02X},X", self.1),
-            ASLAbs   => format!("ASL ${:02X}{:02X}", self.2, self.1),
-            ASLAbsX  => format!("ASL ${:02X}{:02X},X", self.2, self.1),
-            LSRAcc   => format!("LSR A"),
-            LSRZero  => format!("LSR ${:02X}", self.1),
-            LSRZeroX => format!("LSR ${:02X},X", self.1),
-            LSRAbs   => format!("LSR ${:02X}{:02X}", self.2, self.1),
-            LSRAbsX  => format!("LSR ${:02X}{:02X},X", self.2, self.1),
-            ROLAcc   => format!("ROL A"),
-            ROLZero  => format!("ROL ${:02X}", self.1),
-            ROLZeroX => format!("ROL ${:02X},X", self.1),
-            ROLAbs   => format!("ROL ${:02X}{:02X}", self.2, self.1),
-            ROLAbsX  => format!("ROL ${:02X}{:02X},X", self.2, self.1),
-            RORAcc   => format!("ROR A"),
-            RORZero  => format!("ROR ${:02X}", self.1),
-            RORZeroX => format!("ROR ${:02X},X", self.1),
-            RORAbs   => format!("ROR ${:02X}{:02X}", self.2, self.1),
-            RORAbsX  => format!("ROR ${:02X}{:02X},X", self.2, self.1),
-            JMPAbs   => format!("JMP ${:02X}{:02X}", self.2, self.1),
-            JMPInd   => format!("JMP (${:02X}{:02X})", self.2, self.1),
-            JSRAbs   => format!("JSR ${:02X}{:02X}", self.2, self.1),
-            LDAImm   => format!("LDA #${:02X}", self.1),
-            LDAZero  => format!("LDA ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
-            LDAZeroX => format!("LDA ${:02X},X", self.1),
-            LDAAbs   => format!("LDA ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
-            LDAAbsX  => format!("LDA ${:02X}{:02X},X", self.2, self.1),
-            LDAAbsY  => format!("LDA ${:02X}{:02X},Y", self.2, self.1),
-            LDAIndX  => format!("LDA (${:02X},X) @ {:02X} = {:04X} = {:02X}", self.1, self.1.wrapping_add(cpu.x), self.indirect_x(cpu, memory).0, self.dereference_indirect_x(memory, cpu)),
-            LDAIndY  => format!("LDA (${:02X}),Y", self.1),
-            LDXImm   => format!("LDX #${:02X}", self.1),
-            LDXZero  => format!("LDX ${:02X}", self.1),
-            LDXZeroY => format!("LDX ${:02X},Y", self.1),
-            LDXAbs   => format!("LDX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
-            LDXAbsY  => format!("LDX ${:02X}{:02X},Y", self.2, self.1),
-            LDYImm   => format!("LDY #${:02X}", self.1),
-            LDYZero  => format!("LDY ${:02X}", self.1),
-            LDYZeroX => format!("LDY ${:02X},X", self.1),
-            LDYAbs   => format!("LDY ${:02X}{:02X}", self.2, self.1),
-            LDYAbsX  => format!("LDY ${:02X}{:02X},X", self.2, self.1),
-            NOPImp   => format!("NOP"),
-            PHAImp   => format!("PHA"),
-            PHPImp   => format!("PHP"),
-            PLAImp   => format!("PLA"),
-            PLPImp   => format!("PLP"),
-            RTIImp   => format!("RTI"),
-            RTSImp   => format!("RTS"),
-            SECImp   => format!("SEC"),
-            SEDImp   => format!("SED"),
-            SEIImp   => format!("SEI"),
-            STAZero  => format!("STA ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
-            STAZeroX => format!("STA ${:02X},X = {:02X}", self.1, self.dereference_zero_page_x(memory, cpu)),
-            STAAbs   => format!("STA ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
-            STAAbsX  => format!("STA ${:02X}{:02X},X = {:02X}", self.2, self.1, self.dereference_absolute_x(memory, cpu)),
-            STAAbsY  => format!("STA ${:02X}{:02X},Y = {:02X}", self.2, self.1, self.dereference_absolute_y(memory, cpu)),
-            STAIndX  => format!("STA (${:02X},X) = {:02X}", self.1, self.dereference_indirect_x(memory, cpu)),
-            STAIndY  => format!("STA (${:02X}),Y = {:02X}", self.1, self.dereference_indirect_y(memory, cpu)),
-            STXZero  => format!("STX ${:02X} = {:02X}", self.1, self.dereference_zero_page(memory)),
-            STXZeroY => format!("STX ${:02X},Y = {:02X}", self.1, self.dereference_zero_page_y(memory, cpu)),
-            STXAbs   => format!("STX ${:02X}{:02X} = {:02X}", self.2, self.1, self.dereference_absolute(memory)),
-            TAXImp   => format!("TAX"),
-            TAYImp   => format!("TAY"),
-            TSXImp   => format!("TSX"),
-            TXAImp   => format!("TXA"),
-            TXSImp   => format!("TXS"),
-            TYAImp   => format!("TYA"),
+            ANDZero  => self.disassemble_zero_page("AND", memory),
+            ANDZeroX => self.disassemble_zero_page_x("AND", memory),
+            ANDAbs   => self.disassemble_absolute("AND", memory),
+            ANDAbsX  => self.disassemble_absolute_x("AND", memory, cpu),
+            ANDAbsY  => self.disassemble_absolute_y("AND", memory, cpu),
+            ANDIndX  => self.disassemble_indirect_x("AND", memory, cpu),
+            ANDIndY  => self.disassemble_indirect_y("AND", memory, cpu),
+            BCCRel   => self.disassemble_relative("BCC", len, cpu),
+            BCSRel   => self.disassemble_relative("BCS", len, cpu),
+            BEQRel   => self.disassemble_relative("BEQ", len, cpu),
+            BMIRel   => self.disassemble_relative("BMI", len, cpu),
+            EORImm   => self.disassemble_immediate("EOR"),
+            EORZero  => self.disassemble_zero_page("EOR", memory),
+            EORZeroX => self.disassemble_zero_page_x("EOR", memory),
+            EORAbs   => self.disassemble_absolute("EOR", memory),
+            EORAbsX  => self.disassemble_absolute_x("EOR", memory, cpu),
+            EORAbsY  => self.disassemble_absolute_y("EOR", memory, cpu),
+            EORIndX  => self.disassemble_indirect_x("EOR", memory, cpu),
+            EORIndY  => self.disassemble_indirect_y("EOR", memory, cpu),
+            ORAImm   => self.disassemble_immediate("ORA"),
+            ORAZero  => self.disassemble_zero_page("ORA", memory),
+            ORAZeroX => self.disassemble_zero_page_x("ORA", memory),
+            ORAAbs   => self.disassemble_absolute("ORA", memory),
+            ORAAbsX  => self.disassemble_absolute_x("ORA", memory, cpu),
+            ORAAbsY  => self.disassemble_absolute_y("ORA", memory, cpu),
+            ORAIndX  => self.disassemble_indirect_x("ORA", memory, cpu),
+            ORAIndY  => self.disassemble_indirect_y("ORA", memory, cpu),
+            BITZero  => self.disassemble_zero_page("BIT", memory),
+            BITAbs   => self.disassemble_absolute("BIT", memory),
+            BNERel   => self.disassemble_relative("BNE", len, cpu),
+            BPLRel   => self.disassemble_relative("BPL", len, cpu),
+            BVCRel   => self.disassemble_relative("BVC", len, cpu),
+            BVSRel   => self.disassemble_relative("BVS", len, cpu),
+            CLCImp   => self.disassemble_implied("CLC"),
+            CLDImp   => self.disassemble_implied("CLD"),
+            CLIImp   => self.disassemble_implied("CLI"),
+            CLVImp   => self.disassemble_implied("CLV"),
+            ADCImm   => self.disassemble_immediate("ADC"),
+            ADCZero  => self.disassemble_zero_page("ADC", memory),
+            ADCZeroX => self.disassemble_zero_page_x("ADC", memory),
+            ADCAbs   => self.disassemble_absolute("ADC", memory),
+            ADCAbsX  => self.disassemble_absolute_x("ADC", memory, cpu),
+            ADCAbsY  => self.disassemble_absolute_y("ADC", memory, cpu),
+            ADCIndX  => self.disassemble_indirect_x("ADC", memory, cpu),
+            ADCIndY  => self.disassemble_indirect_y("ADC", memory, cpu),
+            SBCImm   => self.disassemble_immediate("SBC"),
+            SBCZero  => self.disassemble_zero_page("SBC", memory),
+            SBCZeroX => self.disassemble_zero_page_x("SBC", memory),
+            SBCAbs   => self.disassemble_absolute("SBC", memory),
+            SBCAbsX  => self.disassemble_absolute_x("SBC", memory, cpu),
+            SBCAbsY  => self.disassemble_absolute_y("SBC", memory, cpu),
+            SBCIndX  => self.disassemble_indirect_x("SBC", memory, cpu),
+            SBCIndY  => self.disassemble_indirect_y("SBC", memory, cpu),
+            CMPImm   => self.disassemble_immediate("CMP"),
+            CMPZero  => self.disassemble_zero_page("CMP", memory),
+            CMPZeroX => self.disassemble_zero_page_x("CMP", memory),
+            CMPAbs   => self.disassemble_absolute("CMP", memory),
+            CMPAbsX  => self.disassemble_absolute_x("CMP", memory, cpu),
+            CMPAbsY  => self.disassemble_absolute_y("CMP", memory, cpu),
+            CMPIndX  => self.disassemble_indirect_x("CMP", memory, cpu),
+            CMPIndY  => self.disassemble_indirect_y("CMP", memory, cpu),
+            CPXImm   => self.disassemble_immediate("CPX"),
+            CPXZero  => self.disassemble_zero_page("CPX", memory),
+            CPXAbs   => self.disassemble_absolute("CPX", memory),
+            CPYImm   => self.disassemble_immediate("CPY"),
+            CPYZero  => self.disassemble_zero_page("CPY", memory),
+            CPYAbs   => self.disassemble_absolute("CPY", memory),
+            INXImp   => self.disassemble_implied("INX"),
+            INYImp   => self.disassemble_implied("INY"),
+            DEXImp   => self.disassemble_implied("DEX"),
+            DEYImp   => self.disassemble_implied("DEY"),
+            ASLAcc   => self.disassemble_accumulator("ASL"),
+            ASLZero  => self.disassemble_zero_page("ASL", memory),
+            ASLZeroX => self.disassemble_zero_page_x("ASL", memory),
+            ASLAbs   => self.disassemble_absolute("ASL", memory),
+            ASLAbsX  => self.disassemble_absolute_x("ASL", memory, cpu),
+            LSRAcc   => self.disassemble_accumulator("LSR"),
+            LSRZero  => self.disassemble_zero_page("LSR", memory),
+            LSRZeroX => self.disassemble_zero_page_x("LSR", memory),
+            LSRAbs   => self.disassemble_absolute("LSR", memory),
+            LSRAbsX  => self.disassemble_absolute_x("LSR", memory, cpu),
+            ROLAcc   => self.disassemble_accumulator("ROL"),
+            ROLZero  => self.disassemble_zero_page("ROL", memory),
+            ROLZeroX => self.disassemble_zero_page_x("ROL", memory),
+            ROLAbs   => self.disassemble_absolute("ROL", memory),
+            ROLAbsX  => self.disassemble_absolute_x("ROL", memory, cpu),
+            RORAcc   => self.disassemble_accumulator("ROR"),
+            RORZero  => self.disassemble_zero_page("ROR", memory),
+            RORZeroX => self.disassemble_zero_page_x("ROR", memory),
+            RORAbs   => self.disassemble_absolute("ROR", memory),
+            RORAbsX  => self.disassemble_absolute_x("ROR", memory, cpu),
+            JMPAbs   => self.disassemble_absolute_noref("JMP"),
+            JMPInd   => self.disassemble_indirect("JMP"),
+            JSRAbs   => self.disassemble_absolute_noref("JSR"),
+            LDAImm   => self.disassemble_immediate("LDA"),
+            LDAZero  => self.disassemble_zero_page("LDA", memory),
+            LDAZeroX => self.disassemble_zero_page_x("LDA", memory),
+            LDAAbs   => self.disassemble_absolute("LDA", memory),
+            LDAAbsX  => self.disassemble_absolute_x("LDA", memory, cpu),
+            LDAAbsY  => self.disassemble_absolute_y("LDA", memory, cpu),
+            LDAIndX  => self.disassemble_indirect_x("LDA", memory, cpu),
+            LDAIndY  => self.disassemble_indirect_y("LDA", memory, cpu),
+            LDXImm   => self.disassemble_immediate("LDX"),
+            LDXZero  => self.disassemble_zero_page("LDX", memory),
+            LDXZeroY => self.disassemble_zero_page_y("LDX", memory),
+            LDXAbs   => self.disassemble_absolute("LDX", memory),
+            LDXAbsY  => self.disassemble_absolute_y("LDX", memory, cpu),
+            LDYImm   => self.disassemble_immediate("LDY"),
+            LDYZero  => self.disassemble_zero_page("LDY", memory),
+            LDYZeroX => self.disassemble_zero_page_y("LDY", memory),
+            LDYAbs   => self.disassemble_absolute("LDY", memory),
+            LDYAbsX  => self.disassemble_absolute_y("LDY", memory, cpu),
+            NOPImp   => self.disassemble_implied("NOP"),
+            PHAImp   => self.disassemble_implied("PHA"),
+            PHPImp   => self.disassemble_implied("PHP"),
+            PLAImp   => self.disassemble_implied("PLA"),
+            PLPImp   => self.disassemble_implied("PLP"),
+            RTIImp   => self.disassemble_implied("RTI"),
+            RTSImp   => self.disassemble_implied("RTS"),
+            SECImp   => self.disassemble_implied("SEC"),
+            SEDImp   => self.disassemble_implied("SED"),
+            SEIImp   => self.disassemble_implied("SEI"),
+            STAZero  => self.disassemble_zero_page("STA", memory),
+            STAZeroX => self.disassemble_zero_page_x("STA", memory),
+            STAAbs   => self.disassemble_absolute("STA", memory),
+            STAAbsX  => self.disassemble_absolute_x("STA", memory, cpu),
+            STAAbsY  => self.disassemble_absolute_y("STA", memory, cpu),
+            STAIndX  => self.disassemble_indirect_x("STA", memory, cpu),
+            STAIndY  => self.disassemble_indirect_y("STA", memory, cpu),
+            STXZero  => self.disassemble_zero_page("STX", memory),
+            STXZeroY => self.disassemble_zero_page_y("STX", memory),
+            STXAbs   => self.disassemble_absolute("STX", memory),
+            TAXImp   => self.disassemble_implied("TAX"),
+            TAYImp   => self.disassemble_implied("TAY"),
+            TSXImp   => self.disassemble_implied("TSX"),
+            TXAImp   => self.disassemble_implied("TXA"),
+            TXSImp   => self.disassemble_implied("TXS"),
+            TYAImp   => self.disassemble_implied("TYA"),
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         }
     }
@@ -2066,6 +2066,11 @@ impl Instruction {
     // disassembly format in Nintendulator logs. These functions simply fill in
     // the blanks with provided parameters.
 
+    /// Disassembles the instruction as if it's using accumulator addressing.
+    fn disassemble_accumulator(&self, instr: &str) -> String {
+        format!("{} A", instr)
+    }
+
     /// Disassembles the instruction as if it's using implied addressing.
     fn disassemble_implied(&self, instr: &str) -> String {
         format!("{}", instr)
@@ -2091,30 +2096,50 @@ impl Instruction {
         format!("{} ${:02X},Y = {:02X}", instr, self.1, self.dereference_zero_page(memory))
     }
 
+    /// Disassembles the instruction as if it's using relative addressing.
+    fn disassemble_relative(&self, instr: &str, len: u8, cpu: &CPU) -> String {
+        let rel = add_relative(cpu.pc, self.relative());
+        format!("{} ${:04X}", instr, rel + len as u16)
+    }
+
     /// Disassembles the instruction as if it's using absolute addressing.
-    fn disassemble_absolute(&self, instr: &str) -> String {
+    ///
+    /// NOTE: This function differs from disassemble_absolute as it does not
+    /// dereference the value at the address. This is primarily used for JMP
+    /// instructions for which the address is used directly.
+    fn disassemble_absolute_noref(&self, instr: &str) -> String {
         format!("{} ${:02X}{:02X}", instr, self.2, self.1)
     }
 
+    /// Disassembles the instruction as if it's using absolute addressing.
+    fn disassemble_absolute(&self, instr: &str, memory: &mut Memory) -> String {
+        format!("{} ${:02X}{:02X} = {:02X}", instr, self.2, self.1, self.dereference_absolute(memory))
+    }
+
     /// Disassembles the instruction as if it's using absolute x addressing.
-    fn disassemble_absolute_x(&self, instr: &str) -> String {
-        format!("{} ${:02x}{:02x},X", instr, self.2, self.1)
+    fn disassemble_absolute_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
+        format!("{} ${:02x}{:02x},X = {:02X}", instr, self.2, self.1, self.dereference_absolute_x(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using absolute y addressing.
-    fn disassemble_absolute_y(&self, instr: &str) -> String {
-        format!("{} ${:02X}{:02X},Y", instr, self.2, self.1)
+    fn disassemble_absolute_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
+        format!("{} ${:02X}{:02X},Y = {:02X}", instr, self.2, self.1, self.dereference_absolute_y(memory, cpu))
+    }
+
+    /// Disassembles the instruction as if it's using indirect addressing.
+    fn disassemble_indirect(&self, instr: &str) -> String {
+        format!("{} (${:02X}{:02X})", instr, self.2, self.1)
     }
 
     /// Disassembles the instruction as if it's using indirect x addressing.
-    fn disassemble_indirect_x(&self, instr: &str, memory: &mut Memory, cpu: &mut CPU) -> String {
+    fn disassemble_indirect_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} (${:02X},X) @ {:02X} = {:04X} = {:02X}", instr, self.1,
             self.1.wrapping_add(cpu.x), self.indirect_x(cpu, memory).0,
             self.dereference_indirect_x(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using indirect y addressing.
-    fn disassemble_indirect_y(&self, instr: &str, memory: &mut Memory, cpu: &mut CPU) -> String {
+    fn disassemble_indirect_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} (${:02X}),Y @ {:02X} = {:04X} = {:02X}", instr, self.1,
             self.1.wrapping_add(cpu.y), self.indirect_y(cpu, memory).0,
             self.dereference_indirect_y(memory, cpu))
