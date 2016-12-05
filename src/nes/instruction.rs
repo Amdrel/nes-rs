@@ -2066,25 +2066,57 @@ impl Instruction {
     // disassembly format in Nintendulator logs. These functions simply fill in
     // the blanks with provided parameters.
 
+    /// Disassembles the instruction as if it's using implied addressing.
+    fn disassemble_implied(&self, instr: &str) -> String {
+        format!("{}", instr)
+    }
+
     /// Disassembles the instruction as if it's using immediate addressing.
-    #[inline(always)]
     fn disassemble_immediate(&self, instr: &str) -> String {
         format!("{} #${:02X}", instr, self.1)
     }
 
     /// Disassembles the instruction as if it's using zero page addressing.
-    #[inline(always)]
-    fn disassemble_zero_page(&self, instr: &str) -> String {
-        format!("{} ${:02X}", instr, self.1)
+    fn disassemble_zero_page(&self, instr: &str, memory: &mut Memory) -> String {
+        format!("{} ${:02X} = {:02X}", instr, self.1, self.dereference_zero_page(memory))
     }
 
-    #[inline(always)]
-    fn disassemble_zero_page_x(&self, instr &str) -> String {
-        format!("{} ${:02X},X", instr, self.1)
+    /// Disassembles the instruction as if it's using zero page x addressing.
+    fn disassemble_zero_page_x(&self, instr: &str, memory: &mut Memory) -> String {
+        format!("{} ${:02X},X = {:02X}", instr, self.1, self.dereference_zero_page(memory))
     }
 
-    #[inline(always)]
-    fn disassemble_zero_page_y(&self, instr &str) -> String {
-        format!("{} ${:02X},Y", instr, self.1)
+    /// Disassembles the instruction as if it's using zero page y addressing.
+    fn disassemble_zero_page_y(&self, instr: &str, memory: &mut Memory) -> String {
+        format!("{} ${:02X},Y = {:02X}", instr, self.1, self.dereference_zero_page(memory))
+    }
+
+    /// Disassembles the instruction as if it's using absolute addressing.
+    fn disassemble_absolute(&self, instr: &str) -> String {
+        format!("{} ${:02X}{:02X}", instr, self.2, self.1)
+    }
+
+    /// Disassembles the instruction as if it's using absolute x addressing.
+    fn disassemble_absolute_x(&self, instr: &str) -> String {
+        format!("{} ${:02x}{:02x},X", instr, self.2, self.1)
+    }
+
+    /// Disassembles the instruction as if it's using absolute y addressing.
+    fn disassemble_absolute_y(&self, instr: &str) -> String {
+        format!("{} ${:02X}{:02X},Y", instr, self.2, self.1)
+    }
+
+    /// Disassembles the instruction as if it's using indirect x addressing.
+    fn disassemble_indirect_x(&self, instr: &str, memory: &mut Memory, cpu: &mut CPU) -> String {
+        format!("{} (${:02X},X) @ {:02X} = {:04X} = {:02X}", instr, self.1,
+            self.1.wrapping_add(cpu.x), self.indirect_x(cpu, memory).0,
+            self.dereference_indirect_x(memory, cpu))
+    }
+
+    /// Disassembles the instruction as if it's using indirect y addressing.
+    fn disassemble_indirect_y(&self, instr: &str, memory: &mut Memory, cpu: &mut CPU) -> String {
+        format!("{} (${:02X}),Y @ {:02X} = {:04X} = {:02X}", instr, self.1,
+            self.1.wrapping_add(cpu.y), self.indirect_y(cpu, memory).0,
+            self.dereference_indirect_y(memory, cpu))
     }
 }
