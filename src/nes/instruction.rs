@@ -114,6 +114,10 @@ impl Instruction {
             CPYImm   => self.disassemble_immediate("CPY"),
             CPYZero  => self.disassemble_zero_page("CPY", memory),
             CPYAbs   => self.disassemble_absolute("CPY", memory),
+            INCZero  => self.disassemble_zero_page("INC", memory),
+            INCZeroX => self.disassemble_zero_page_x("INC", memory),
+            INCAbs   => self.disassemble_absolute("INC", memory),
+            INCAbsX  => self.disassemble_absolute_x("INC", memory, cpu),
             INXImp   => self.disassemble_implied("INX"),
             INYImp   => self.disassemble_implied("INY"),
             DEXImp   => self.disassemble_implied("DEX"),
@@ -179,6 +183,9 @@ impl Instruction {
             STXZero  => self.disassemble_zero_page("STX", memory),
             STXZeroY => self.disassemble_zero_page_y("STX", memory),
             STXAbs   => self.disassemble_absolute("STX", memory),
+            STYZero  => self.disassemble_zero_page("STY", memory),
+            STYZeroX => self.disassemble_zero_page_y("STY", memory),
+            STYAbs   => self.disassemble_absolute("STY", memory),
             TAXImp   => self.disassemble_implied("TAX"),
             TAYImp   => self.disassemble_implied("TAY"),
             TSXImp   => self.disassemble_implied("TSX"),
@@ -1255,6 +1262,42 @@ impl Instruction {
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
+            INCZero => {
+                let addr = self.zero_page();
+                let result = memory.read_u8(addr).wrapping_add(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            INCZeroX => {
+                let addr = self.zero_page_x(cpu);
+                let result = memory.read_u8(addr).wrapping_add(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            INCAbs => {
+                let addr = self.absolute();
+                let result = memory.read_u8(addr).wrapping_add(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            INCAbsX => {
+                let (addr, _) = self.absolute_x(cpu);
+                let result = memory.read_u8(addr).wrapping_add(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 7;
+                cpu.pc += len;
+            },
             INXImp => {
                 let result = cpu.x.wrapping_add(1);
                 cpu.x = result;
@@ -1808,6 +1851,21 @@ impl Instruction {
             },
             STXAbs => {
                 memory.write_u8(self.absolute(), cpu.x);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            STYZero => {
+                memory.write_u8(self.zero_page(), cpu.y);
+                cpu.cycles += 3;
+                cpu.pc += len;
+            },
+            STYZeroX => {
+                memory.write_u8(self.zero_page_x(cpu), cpu.y);
+                cpu.cycles += 4;
+                cpu.pc += len;
+            },
+            STYAbs => {
+                memory.write_u8(self.absolute(), cpu.y);
                 cpu.cycles += 4;
                 cpu.pc += len;
             },
