@@ -48,7 +48,7 @@ impl Instruction {
         match opcode {
             ANDImm   => self.disassemble_immediate("AND"),
             ANDZero  => self.disassemble_zero_page("AND", memory),
-            ANDZeroX => self.disassemble_zero_page_x("AND", memory),
+            ANDZeroX => self.disassemble_zero_page_x("AND", memory, cpu),
             ANDAbs   => self.disassemble_absolute("AND", memory),
             ANDAbsX  => self.disassemble_absolute_x("AND", memory, cpu),
             ANDAbsY  => self.disassemble_absolute_y("AND", memory, cpu),
@@ -60,7 +60,7 @@ impl Instruction {
             BMIRel   => self.disassemble_relative("BMI", len, cpu),
             EORImm   => self.disassemble_immediate("EOR"),
             EORZero  => self.disassemble_zero_page("EOR", memory),
-            EORZeroX => self.disassemble_zero_page_x("EOR", memory),
+            EORZeroX => self.disassemble_zero_page_x("EOR", memory, cpu),
             EORAbs   => self.disassemble_absolute("EOR", memory),
             EORAbsX  => self.disassemble_absolute_x("EOR", memory, cpu),
             EORAbsY  => self.disassemble_absolute_y("EOR", memory, cpu),
@@ -68,7 +68,7 @@ impl Instruction {
             EORIndY  => self.disassemble_indirect_y("EOR", memory, cpu),
             ORAImm   => self.disassemble_immediate("ORA"),
             ORAZero  => self.disassemble_zero_page("ORA", memory),
-            ORAZeroX => self.disassemble_zero_page_x("ORA", memory),
+            ORAZeroX => self.disassemble_zero_page_x("ORA", memory, cpu),
             ORAAbs   => self.disassemble_absolute("ORA", memory),
             ORAAbsX  => self.disassemble_absolute_x("ORA", memory, cpu),
             ORAAbsY  => self.disassemble_absolute_y("ORA", memory, cpu),
@@ -86,7 +86,7 @@ impl Instruction {
             CLVImp   => self.disassemble_implied("CLV"),
             ADCImm   => self.disassemble_immediate("ADC"),
             ADCZero  => self.disassemble_zero_page("ADC", memory),
-            ADCZeroX => self.disassemble_zero_page_x("ADC", memory),
+            ADCZeroX => self.disassemble_zero_page_x("ADC", memory, cpu),
             ADCAbs   => self.disassemble_absolute("ADC", memory),
             ADCAbsX  => self.disassemble_absolute_x("ADC", memory, cpu),
             ADCAbsY  => self.disassemble_absolute_y("ADC", memory, cpu),
@@ -94,7 +94,7 @@ impl Instruction {
             ADCIndY  => self.disassemble_indirect_y("ADC", memory, cpu),
             SBCImm   => self.disassemble_immediate("SBC"),
             SBCZero  => self.disassemble_zero_page("SBC", memory),
-            SBCZeroX => self.disassemble_zero_page_x("SBC", memory),
+            SBCZeroX => self.disassemble_zero_page_x("SBC", memory, cpu),
             SBCAbs   => self.disassemble_absolute("SBC", memory),
             SBCAbsX  => self.disassemble_absolute_x("SBC", memory, cpu),
             SBCAbsY  => self.disassemble_absolute_y("SBC", memory, cpu),
@@ -102,7 +102,7 @@ impl Instruction {
             SBCIndY  => self.disassemble_indirect_y("SBC", memory, cpu),
             CMPImm   => self.disassemble_immediate("CMP"),
             CMPZero  => self.disassemble_zero_page("CMP", memory),
-            CMPZeroX => self.disassemble_zero_page_x("CMP", memory),
+            CMPZeroX => self.disassemble_zero_page_x("CMP", memory, cpu),
             CMPAbs   => self.disassemble_absolute("CMP", memory),
             CMPAbsX  => self.disassemble_absolute_x("CMP", memory, cpu),
             CMPAbsY  => self.disassemble_absolute_y("CMP", memory, cpu),
@@ -115,35 +115,35 @@ impl Instruction {
             CPYZero  => self.disassemble_zero_page("CPY", memory),
             CPYAbs   => self.disassemble_absolute("CPY", memory),
             INCZero  => self.disassemble_zero_page("INC", memory),
-            INCZeroX => self.disassemble_zero_page_x("INC", memory),
+            INCZeroX => self.disassemble_zero_page_x("INC", memory, cpu),
             INCAbs   => self.disassemble_absolute("INC", memory),
             INCAbsX  => self.disassemble_absolute_x("INC", memory, cpu),
             INXImp   => self.disassemble_implied("INX"),
             INYImp   => self.disassemble_implied("INY"),
             DECZero  => self.disassemble_zero_page("DEC", memory),
-            DECZeroX => self.disassemble_zero_page_x("DEC", memory),
+            DECZeroX => self.disassemble_zero_page_x("DEC", memory, cpu),
             DECAbs   => self.disassemble_absolute("DEC", memory),
             DECAbsX  => self.disassemble_absolute_x("DEC", memory, cpu),
             DEXImp   => self.disassemble_implied("DEX"),
             DEYImp   => self.disassemble_implied("DEY"),
             ASLAcc   => self.disassemble_accumulator("ASL"),
             ASLZero  => self.disassemble_zero_page("ASL", memory),
-            ASLZeroX => self.disassemble_zero_page_x("ASL", memory),
+            ASLZeroX => self.disassemble_zero_page_x("ASL", memory, cpu),
             ASLAbs   => self.disassemble_absolute("ASL", memory),
             ASLAbsX  => self.disassemble_absolute_x("ASL", memory, cpu),
             LSRAcc   => self.disassemble_accumulator("LSR"),
             LSRZero  => self.disassemble_zero_page("LSR", memory),
-            LSRZeroX => self.disassemble_zero_page_x("LSR", memory),
+            LSRZeroX => self.disassemble_zero_page_x("LSR", memory, cpu),
             LSRAbs   => self.disassemble_absolute("LSR", memory),
             LSRAbsX  => self.disassemble_absolute_x("LSR", memory, cpu),
             ROLAcc   => self.disassemble_accumulator("ROL"),
             ROLZero  => self.disassemble_zero_page("ROL", memory),
-            ROLZeroX => self.disassemble_zero_page_x("ROL", memory),
+            ROLZeroX => self.disassemble_zero_page_x("ROL", memory, cpu),
             ROLAbs   => self.disassemble_absolute("ROL", memory),
             ROLAbsX  => self.disassemble_absolute_x("ROL", memory, cpu),
             RORAcc   => self.disassemble_accumulator("ROR"),
             RORZero  => self.disassemble_zero_page("ROR", memory),
-            RORZeroX => self.disassemble_zero_page_x("ROR", memory),
+            RORZeroX => self.disassemble_zero_page_x("ROR", memory, cpu),
             RORAbs   => self.disassemble_absolute("ROR", memory),
             RORAbsX  => self.disassemble_absolute_x("ROR", memory, cpu),
             JMPAbs   => self.disassemble_absolute_noref("JMP"),
@@ -151,7 +151,7 @@ impl Instruction {
             JSRAbs   => self.disassemble_absolute_noref("JSR"),
             LDAImm   => self.disassemble_immediate("LDA"),
             LDAZero  => self.disassemble_zero_page("LDA", memory),
-            LDAZeroX => self.disassemble_zero_page_x("LDA", memory),
+            LDAZeroX => self.disassemble_zero_page_x("LDA", memory, cpu),
             LDAAbs   => self.disassemble_absolute("LDA", memory),
             LDAAbsX  => self.disassemble_absolute_x("LDA", memory, cpu),
             LDAAbsY  => self.disassemble_absolute_y("LDA", memory, cpu),
@@ -159,14 +159,14 @@ impl Instruction {
             LDAIndY  => self.disassemble_indirect_y("LDA", memory, cpu),
             LDXImm   => self.disassemble_immediate("LDX"),
             LDXZero  => self.disassemble_zero_page("LDX", memory),
-            LDXZeroY => self.disassemble_zero_page_y("LDX", memory),
+            LDXZeroY => self.disassemble_zero_page_y("LDX", memory, cpu),
             LDXAbs   => self.disassemble_absolute("LDX", memory),
             LDXAbsY  => self.disassemble_absolute_y("LDX", memory, cpu),
             LDYImm   => self.disassemble_immediate("LDY"),
             LDYZero  => self.disassemble_zero_page("LDY", memory),
-            LDYZeroX => self.disassemble_zero_page_y("LDY", memory),
+            LDYZeroX => self.disassemble_zero_page_x("LDY", memory, cpu),
             LDYAbs   => self.disassemble_absolute("LDY", memory),
-            LDYAbsX  => self.disassemble_absolute_y("LDY", memory, cpu),
+            LDYAbsX  => self.disassemble_absolute_x("LDY", memory, cpu),
             NOPImp   => self.disassemble_implied("NOP"),
             PHAImp   => self.disassemble_implied("PHA"),
             PHPImp   => self.disassemble_implied("PHP"),
@@ -178,17 +178,17 @@ impl Instruction {
             SEDImp   => self.disassemble_implied("SED"),
             SEIImp   => self.disassemble_implied("SEI"),
             STAZero  => self.disassemble_zero_page("STA", memory),
-            STAZeroX => self.disassemble_zero_page_x("STA", memory),
+            STAZeroX => self.disassemble_zero_page_x("STA", memory, cpu),
             STAAbs   => self.disassemble_absolute("STA", memory),
             STAAbsX  => self.disassemble_absolute_x("STA", memory, cpu),
             STAAbsY  => self.disassemble_absolute_y("STA", memory, cpu),
             STAIndX  => self.disassemble_indirect_x("STA", memory, cpu),
             STAIndY  => self.disassemble_indirect_y("STA", memory, cpu),
             STXZero  => self.disassemble_zero_page("STX", memory),
-            STXZeroY => self.disassemble_zero_page_y("STX", memory),
+            STXZeroY => self.disassemble_zero_page_y("STX", memory, cpu),
             STXAbs   => self.disassemble_absolute("STX", memory),
             STYZero  => self.disassemble_zero_page("STY", memory),
-            STYZeroX => self.disassemble_zero_page_y("STY", memory),
+            STYZeroX => self.disassemble_zero_page_x("STY", memory, cpu),
             STYAbs   => self.disassemble_absolute("STY", memory),
             TAXImp   => self.disassemble_implied("TAX"),
             TAYImp   => self.disassemble_implied("TAY"),
@@ -2185,13 +2185,15 @@ impl Instruction {
     }
 
     /// Disassembles the instruction as if it's using zero page x addressing.
-    fn disassemble_zero_page_x(&self, instr: &str, memory: &mut Memory) -> String {
-        format!("{} ${:02X},X = {:02X}", instr, self.1, self.dereference_zero_page(memory))
+    fn disassemble_zero_page_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
+        format!("{} ${:02X},X @ {:02X} = {:02X}", instr, self.1, self.zero_page_x(cpu),
+            self.dereference_zero_page_x(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using zero page y addressing.
-    fn disassemble_zero_page_y(&self, instr: &str, memory: &mut Memory) -> String {
-        format!("{} ${:02X},Y = {:02X}", instr, self.1, self.dereference_zero_page(memory))
+    fn disassemble_zero_page_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
+        format!("{} ${:02X},Y @ {:02X} = {:02X}", instr, self.1, self.zero_page_y(cpu),
+            self.dereference_zero_page_y(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using relative addressing.
@@ -2216,12 +2218,14 @@ impl Instruction {
 
     /// Disassembles the instruction as if it's using absolute x addressing.
     fn disassemble_absolute_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
-        format!("{} ${:02x}{:02x},X = {:02X}", instr, self.2, self.1, self.dereference_absolute_x(memory, cpu))
+        format!("{} ${:02x}{:02X},X @ {:04X} = {:02X}", instr, self.2, self.1,
+            self.absolute_x(cpu).0, self.dereference_absolute_x(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using absolute y addressing.
     fn disassemble_absolute_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
-        format!("{} ${:02X}{:02X},Y = {:02X}", instr, self.2, self.1, self.dereference_absolute_y(memory, cpu))
+        format!("{} ${:02X}{:02X},Y @ {:04X} = {:02X}", instr, self.2, self.1,
+            self.absolute_y(cpu).0, self.dereference_absolute_y(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using indirect addressing.
