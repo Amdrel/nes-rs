@@ -120,6 +120,10 @@ impl Instruction {
             INCAbsX  => self.disassemble_absolute_x("INC", memory, cpu),
             INXImp   => self.disassemble_implied("INX"),
             INYImp   => self.disassemble_implied("INY"),
+            DECZero  => self.disassemble_zero_page("DEC", memory),
+            DECZeroX => self.disassemble_zero_page_x("DEC", memory),
+            DECAbs   => self.disassemble_absolute("DEC", memory),
+            DECAbsX  => self.disassemble_absolute_x("DEC", memory, cpu),
             DEXImp   => self.disassemble_implied("DEX"),
             DEYImp   => self.disassemble_implied("DEY"),
             ASLAcc   => self.disassemble_accumulator("ASL"),
@@ -528,7 +532,7 @@ impl Instruction {
                 cpu.pc += len;
             },
             BITAbs => {
-                let byte = self.dereference_zero_page(memory);
+                let byte = self.dereference_absolute(memory);
                 let result = byte & cpu.a;
                 cpu.toggle_zero_flag(result);
                 let mask = 0xC0;
@@ -1312,6 +1316,42 @@ impl Instruction {
                 cpu.toggle_zero_flag(result);
                 cpu.toggle_negative_flag(result);
                 cpu.cycles += 2;
+                cpu.pc += len;
+            },
+            DECZero => {
+                let addr = self.zero_page();
+                let result = memory.read_u8(addr).wrapping_sub(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 5;
+                cpu.pc += len;
+            },
+            DECZeroX => {
+                let addr = self.zero_page_x(cpu);
+                let result = memory.read_u8(addr).wrapping_sub(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            DECAbs => {
+                let addr = self.absolute();
+                let result = memory.read_u8(addr).wrapping_sub(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 6;
+                cpu.pc += len;
+            },
+            DECAbsX => {
+                let (addr, _) = self.absolute_x(cpu);
+                let result = memory.read_u8(addr).wrapping_sub(1);
+                memory.write_u8(addr, result);
+                cpu.toggle_zero_flag(result);
+                cpu.toggle_negative_flag(result);
+                cpu.cycles += 7;
                 cpu.pc += len;
             },
             DEXImp => {
