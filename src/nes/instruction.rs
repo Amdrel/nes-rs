@@ -147,7 +147,7 @@ impl Instruction {
             RORAbs   => self.disassemble_absolute("ROR", memory),
             RORAbsX  => self.disassemble_absolute_x("ROR", memory, cpu),
             JMPAbs   => self.disassemble_absolute_noref("JMP"),
-            JMPInd   => self.disassemble_indirect("JMP"),
+            JMPInd   => self.disassemble_indirect("JMP", memory),
             JSRAbs   => self.disassemble_absolute_noref("JSR"),
             LDAImm   => self.disassemble_immediate("LDA"),
             LDAZero  => self.disassemble_zero_page("LDA", memory),
@@ -1611,7 +1611,7 @@ impl Instruction {
                 // due to a bug in the indirect JMP operation.
                 // https://github.com/Reshurum/nes-rs/issues/3
                 let arg = self.arg_u16() as usize;
-                cpu.pc = memory.read_u16_wrapped_msb_alt(arg);
+                cpu.pc = memory.read_u16_wrapped_msb(arg);
                 cpu.cycles += 5;
             },
             JSRAbs => {
@@ -2069,7 +2069,7 @@ impl Instruction {
     #[inline(always)]
     fn indirect(&self, memory: &mut Memory) -> usize {
         let arg = self.arg_u16() as usize;
-        memory.read_u16(arg) as usize
+        memory.read_u16_wrapped_msb(arg) as usize
     }
 
     /// Calculates a memory address using by adding X to the 8-bit value in the
@@ -2091,7 +2091,7 @@ impl Instruction {
     #[inline(always)]
     fn indirect_y(&self, cpu: &CPU, memory: &mut Memory) -> (usize, PageCross) {
         let arg = self.arg_u8() as usize;
-        let base_addr = memory.read_u16(arg);
+        let base_addr = memory.read_u16_wrapped_msb(arg);
         let addr = base_addr.wrapping_add(cpu.y as u16) as usize;
         let page_cross = page_cross(base_addr as usize, addr);
         (addr, page_cross)
@@ -2225,8 +2225,8 @@ impl Instruction {
     }
 
     /// Disassembles the instruction as if it's using indirect addressing.
-    fn disassemble_indirect(&self, instr: &str) -> String {
-        format!("{} (${:02X}{:02X})", instr, self.2, self.1)
+    fn disassemble_indirect(&self, instr: &str, memory: &mut Memory) -> String {
+        format!("{} (${:02X}{:02X}) = {:04X}", instr, self.2, self.1, self.indirect(memory))
     }
 
     /// Disassembles the instruction as if it's using indirect x addressing.
@@ -2238,8 +2238,8 @@ impl Instruction {
 
     /// Disassembles the instruction as if it's using indirect y addressing.
     fn disassemble_indirect_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
-        format!("{} (${:02X}),Y @ {:02X} = {:04X} = {:02X}", instr, self.1,
-            self.1.wrapping_add(cpu.y), self.indirect_y(cpu, memory).0,
-            self.dereference_indirect_y(memory, cpu))
+        format!("{} (${:02X}),Y = {:04X} @ {:04X} = {:02X}", instr, self.1,
+            memory.read_u16_wrapped_msb(self.arg_u16() as usize),
+            self.indirect_y(cpu, memory).0, self.dereference_indirect_y(memory, cpu))
     }
 }
