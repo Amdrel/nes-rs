@@ -93,14 +93,23 @@ impl Memory {
     /// Reads an unsigned 8-bit byte value located at the given virtual address.
     #[inline(always)]
     pub fn read_u8(&mut self, addr: usize) -> u8 {
-        let (bank, idx) = self.map(addr);
+        let (bank, idx, _) = self.map(addr);
         bank[idx]
     }
 
     /// Writes an unsigned 8-bit byte value to the given virtual address.
     #[inline(always)]
     pub fn write_u8(&mut self, addr: usize, val: u8) {
-        let (bank, idx) = self.map(addr);
+        let (bank, idx, writable) = self.map(addr);
+        if writable {
+            bank[idx] = val;
+        }
+    }
+
+    /// Writes an unsigned 8-bit byte value to the given virtual address.
+    #[inline(always)]
+    pub fn write_u8_unrestricted(&mut self, addr: usize, val: u8) {
+        let (bank, idx, _) = self.map(addr);
         bank[idx] = val;
     }
 
@@ -187,7 +196,7 @@ impl Memory {
     /// Dumps the contents of a slice starting at a given address.
     pub fn memdump(&mut self, addr: usize, buf: &[u8]) {
         for i in 0..buf.len() {
-            self.write_u8(addr + i, buf[i]);
+            self.write_u8_unrestricted(addr + i, buf[i]);
         }
     }
 
@@ -219,28 +228,26 @@ impl Memory {
 
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
-    ///
-    /// TODO: Add permissions flag for special addresses?
-    fn map(&mut self, addr: usize) -> (&mut [u8], usize) {
+    fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool) {
         match addr {
             RAM_START_ADDR...RAM_END_ADDR =>
-                (&mut self.ram, addr),
+                (&mut self.ram, addr, true),
             RAM_MIRROR_START...RAM_MIRROR_END =>
-                (&mut self.ram, addr % RAM_SIZE),
+                (&mut self.ram, addr % RAM_SIZE, true),
             PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END =>
-                (&mut self.ppu_ctrl_registers, addr - PPU_CTRL_REGISTERS_START),
+                (&mut self.ppu_ctrl_registers, addr - PPU_CTRL_REGISTERS_START, true),
             PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
-                (&mut self.ppu_ctrl_registers, (addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE),
+                (&mut self.ppu_ctrl_registers, (addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE, true),
             MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
-                (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START),
+                (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START, true),
             EXPANSION_ROM_START...EXPANSION_ROM_END =>
-                (&mut self.expansion_rom, addr - EXPANSION_ROM_START),
+                (&mut self.expansion_rom, addr - EXPANSION_ROM_START, false),
             SRAM_START...SRAM_END =>
-                (&mut self.sram, addr - SRAM_START),
+                (&mut self.sram, addr - SRAM_START, true),
             PRG_ROM_1_START...PRG_ROM_1_END =>
-                (&mut self.prg_rom_1, addr - PRG_ROM_1_START),
+                (&mut self.prg_rom_1, addr - PRG_ROM_1_START, false),
             PRG_ROM_2_START...PRG_ROM_2_END =>
-                (&mut self.prg_rom_2, addr - PRG_ROM_2_START),
+                (&mut self.prg_rom_2, addr - PRG_ROM_2_START, false),
             _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) }
         }
     }

@@ -25,7 +25,8 @@ use nes::memory::{
     PRG_ROM_SIZE
 };
 
-/// The NES struct owns all hardware peripherals and lends them when needed.
+/// The NES struct owns all hardware peripherals and lends them when needed. The
+/// runtime cost of this should be removed with optimized builds (untested).
 pub struct NES {
     pub header: INESHeader,
     pub runtime_options: NESRuntimeOptions,
@@ -41,30 +42,33 @@ impl NES {
         // of a trainer will shift the locations of other structures.
         let mut cursor: usize = 0x10;
 
-        // Copy the trainer data to 0x7000 if it exists.
+        log::log("init", format!("Using {:?} mapper", header.mapper()), &runtime_options);
+        log::log("init", format!("Using {:?} mirroring", header.mirror_type()), &runtime_options);
+
+        // Copy the trainer data to 0x7000 if it exists and adjust the cursor
+        // size to accommodate. Trainer data will offset the location of ROM
+        // data in the INES ROM file.
         let mut memory = Memory::new();
         if header.has_trainer() {
-            println!("[init] Trainer data found");
+            log::log("init", "Trainer data found", &runtime_options);
             memory.memdump(TRAINER_START, &rom[0x10..0x210]);
             cursor += TRAINER_SIZE;
         }
 
-        log::log("init", format!("Using {:?} mapper", header.mapper()), &runtime_options);
-        log::log("init", format!("Using {:?} mirroring", header.mirror_type()), &runtime_options);
-
-        // TODO: Mapper handling?
-
-        // Copy PRG-ROM into memory so it can be addressed by the memory mapper.
+        // Copy PRG-ROM into memory so it can be addressed by the chosen memory
+        // mapper. PRG-ROM bank 1 begins at 0x8000 and bank 2 begins at 0xC000.
+        //
+        // In the event that there are 2 PRG-ROM banks, make both banks
+        // addressable at their respective locations. However if there's only
+        // one bank, make PRG-ROM bank 1 addressable starting from both
+        // addresses.
         if header.prg_rom_size == 2 {
-            // There are 2 PRG-ROM banks, copy them to memory.
             log::log("init", "2 PRG-ROM banks detected", &runtime_options);
             let prg_rom_1_addr = cursor;
             let prg_rom_2_addr = cursor + PRG_ROM_SIZE;
             memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
             memory.memdump(PRG_ROM_2_START, &rom[prg_rom_2_addr..prg_rom_2_addr + PRG_ROM_SIZE]);
         } else {
-            // There is only 1 PRG-ROM bank, make the rom addressable at both
-            // 0x8000 and 0xC000.
             log::log("init", "1 PRG-ROM bank detected", &runtime_options);
             let prg_rom_1_addr = cursor;
             memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
@@ -120,6 +124,7 @@ impl NES {
     }
 }
 
+/// Flags and other information set through command-line arguments.
 #[derive(Clone)]
 pub struct NESRuntimeOptions {
     pub cpu_log: Option<String>,
