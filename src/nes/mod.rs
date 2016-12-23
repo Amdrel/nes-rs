@@ -8,7 +8,7 @@
 
 mod cpu;
 mod instruction;
-mod memory;
 mod opcode;
 
+pub mod memory;
 pub mod nes;

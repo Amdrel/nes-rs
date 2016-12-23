@@ -17,7 +17,9 @@ mod utils;
 
 use getopts::Options;
 use io::binutils::INESHeader;
+use io::binutils::Mapper::*;
 use io::errors::*;
+use nes::memory::NROMMapper;
 use nes::nes::NES;
 use nes::nes::NESRuntimeOptions;
 use std::env;
@@ -94,8 +96,8 @@ fn init() -> i32 {
         }
     };
 
-    // Parse the rom's header to check if it's a valid iNES ROM.
-    // TODO: Support other ROM formats.
+    // Parse the rom's header to check if it's a valid iNES ROM and store it in
+    // an internal structure.
     let header = match INESHeader::new(&rom) {
         Ok(header) => header,
         Err(e) => {
@@ -105,13 +107,20 @@ fn init() -> i32 {
             return EXIT_INVALID_ROM
         }
     };
-
-    // Bootup the NES and start executing code from the ROM.
-    let mut nes = NES::new(rom, header, NESRuntimeOptions {
+    let runtime_options = NESRuntimeOptions {
         cpu_log: matches.opt_str("test"),
         verbose: matches.opt_present("verbose"),
-    });
-    nes.run()
+    };
+
+    // Initialize the NES with the mapper specified in the INES file and start
+    // executing the ROM. The run function will only return when there is a
+    // panic in the CPU or other emulated hardware.
+    match header.mapper() {
+        NROM => {
+            let mut nes: NES<NROMMapper> = NES::new(rom, header, runtime_options);
+            nes.run()
+        }
+    }
 }
 
 /// Entry point of the program and wrapper of init. Takes the exit code returned

@@ -47,13 +47,77 @@ pub const TRAINER_SIZE : usize = 512;
 // memory page 2 (0x100).
 const STACK_OFFSET: usize = 0x100;
 
+pub trait MemoryMapper {
+    /// Map should map a given virtual address to either a physical address to
+    /// host memory or to some control mechanism. How memory is mapped depends
+    /// on the cartridge being used by the INES ROM.
+    fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool);
+}
+
+pub trait Memory: MemoryMapper {
+    /// Returns an instance of memory with all banks initialized.
+    fn new() -> Self;
+
+    /// Reads an unsigned 8-bit byte value located at the given virtual address.
+    fn read_u8(&mut self, addr: usize) -> u8;
+
+    /// Writes an unsigned 8-bit byte value to the given virtual address.
+    fn write_u8(&mut self, addr: usize, val: u8);
+
+    /// Writes an unsigned 8-bit byte value to the given virtual address.
+    fn write_u8_unrestricted(&mut self, addr: usize, val: u8);
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian).
+    fn read_u16(&mut self, addr: usize) -> u16;
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian).
+    fn read_u16_alt(&mut self, addr: usize) -> u16;
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian) where the MSB is read at page start if the LSB is at
+    /// the end of a page. This exists to properly emulate a hardware bug in the
+    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
+    fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16;
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian) where the MSB is read at page start if the LSB is at
+    /// the end of a page. This exists to properly emulate a hardware bug in the
+    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
+    fn read_u16_wrapped_msb_alt(&mut self, addr: usize) -> u16;
+
+    /// Writes an unsigned 16-bit byte value to the given virtual address
+    /// (little-endian)
+    fn write_u16(&mut self, addr: usize, val: u16);
+
+    /// Writes an unsigned 16-bit byte value to the given virtual address
+    /// (little-endian)
+    fn write_u16_alt(&mut self, addr: usize, val: u16);
+
+    /// Dumps the contents of a slice starting at a given address.
+    fn memdump(&mut self, addr: usize, buf: &[u8]);
+
+    /// Pushes an 8-bit number onto the stack.
+    fn stack_push_u8(&mut self, cpu: &mut CPU, value: u8);
+
+    /// Pops an 8-bit number off the stack.
+    fn stack_pop_u8(&mut self, cpu: &mut CPU) -> u8;
+
+    /// Pushes a 16-bit number (usually an address) onto the stack.
+    fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16);
+
+    /// Pops a 16-bit number (usually an address) off the stack.
+    fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16;
+}
+
 /// Partitioned physical memory layout for CPU memory. These fields are not
 /// meant to be accessed directly by the CPU implementation and are instead
 /// accessed through a read function that handles memory mapping.
 ///
 /// NOTE: Currently all memory is allocated on the stack. This may not work well
 /// for systems with a small stack and slices should be boxed up.
-pub struct Memory {
+pub struct NROMMapper {
     // 2kB of internal RAM for which it's use is entirely up to the programmer.
     ram: [u8; RAM_SIZE],
 
@@ -77,155 +141,7 @@ pub struct Memory {
     prg_rom_2: [u8; PRG_ROM_SIZE]
 }
 
-impl Memory {
-    pub fn new() -> Memory {
-        Memory {
-            ram: [0; RAM_SIZE],
-            ppu_ctrl_registers: [0; PPU_CTRL_REGISTERS_SIZE],
-            misc_ctrl_registers: [0; MISC_CTRL_REGISTERS_SIZE],
-            expansion_rom: [0; EXPANSION_ROM_SIZE],
-            sram: [0; SRAM_SIZE],
-            prg_rom_1: [0; PRG_ROM_SIZE],
-            prg_rom_2: [0; PRG_ROM_SIZE]
-        }
-    }
-
-    /// Reads an unsigned 8-bit byte value located at the given virtual address.
-    #[inline(always)]
-    pub fn read_u8(&mut self, addr: usize) -> u8 {
-        let (bank, idx, _) = self.map(addr);
-        bank[idx]
-    }
-
-    /// Writes an unsigned 8-bit byte value to the given virtual address.
-    #[inline(always)]
-    pub fn write_u8(&mut self, addr: usize, val: u8) {
-        let (bank, idx, writable) = self.map(addr);
-        if writable {
-            bank[idx] = val;
-        }
-    }
-
-    /// Writes an unsigned 8-bit byte value to the given virtual address.
-    #[inline(always)]
-    pub fn write_u8_unrestricted(&mut self, addr: usize, val: u8) {
-        let (bank, idx, _) = self.map(addr);
-        bank[idx] = val;
-    }
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian).
-    #[inline(always)]
-    pub fn read_u16(&mut self, addr: usize) -> u16 {
-        // Reads two bytes starting at the given address and parses them.
-        let mut reader = Cursor::new(vec![
-            self.read_u8(addr),
-            self.read_u8(addr + 1)
-        ]);
-        reader.read_u16::<LittleEndian>().unwrap()
-    }
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian).
-    #[inline(always)]
-    pub fn read_u16_alt(&mut self, addr: usize) -> u16 {
-        // Reads two bytes starting at the given address and parses them.
-        let mut reader = Cursor::new(vec![
-            self.read_u8(addr - 1),
-            self.read_u8(addr)
-        ]);
-        reader.read_u16::<LittleEndian>().unwrap()
-    }
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian) where the MSB is read at page start if the LSB is at
-    /// the end of a page. This exists to properly emulate a hardware bug in the
-    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
-    #[inline(always)]
-    pub fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16 {
-        let lsb = self.read_u8(addr);
-        let msb = if addr & 0xFF == 0xFF {
-            self.read_u8(addr - 0xFF)
-        } else {
-            self.read_u8(addr + 1)
-        };
-
-        // Reads two bytes starting at the given address and parses them.
-        let mut reader = Cursor::new(vec![lsb, msb]);
-        reader.read_u16::<LittleEndian>().unwrap()
-    }
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian) where the MSB is read at page start if the LSB is at
-    /// the end of a page. This exists to properly emulate a hardware bug in the
-    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
-    #[inline(always)]
-    pub fn read_u16_wrapped_msb_alt(&mut self, addr: usize) -> u16 {
-        let lsb = self.read_u8(addr - 1);
-        let msb = if addr & 0xFF == 0xFF {
-            self.read_u8(addr - 0xFF)
-        } else {
-            self.read_u8(addr)
-        };
-
-        // Reads two bytes starting at the given address and parses them.
-        let mut reader = Cursor::new(vec![lsb, msb]);
-        reader.read_u16::<LittleEndian>().unwrap()
-    }
-
-    /// Writes an unsigned 16-bit byte value to the given virtual address
-    /// (little-endian)
-    #[inline(always)]
-    pub fn write_u16(&mut self, addr: usize, val: u16) {
-        let mut writer = vec![];
-        writer.write_u16::<LittleEndian>(val).unwrap();
-        self.write_u8(addr, writer[0]);
-        self.write_u8(addr + 1, writer[1]);
-    }
-
-    /// Writes an unsigned 16-bit byte value to the given virtual address
-    /// (little-endian)
-    #[inline(always)]
-    pub fn write_u16_alt(&mut self, addr: usize, val: u16) {
-        let mut writer = vec![];
-        writer.write_u16::<LittleEndian>(val).unwrap();
-        self.write_u8(addr - 1, writer[0]);
-        self.write_u8(addr, writer[1]);
-    }
-
-    /// Dumps the contents of a slice starting at a given address.
-    pub fn memdump(&mut self, addr: usize, buf: &[u8]) {
-        for i in 0..buf.len() {
-            self.write_u8_unrestricted(addr + i, buf[i]);
-        }
-    }
-
-    // Utility functions for managing the stack.
-
-    /// Pushes an 8-bit number onto the stack.
-    pub fn stack_push_u8(&mut self, cpu: &mut CPU, value: u8) {
-        self.write_u8(STACK_OFFSET + cpu.sp as usize, value);
-        cpu.sp = cpu.sp.wrapping_sub(1);
-    }
-
-    /// Pops an 8-bit number off the stack.
-    pub fn stack_pop_u8(&mut self, cpu: &mut CPU) -> u8 {
-        cpu.sp = cpu.sp.wrapping_add(1);
-        self.read_u8(STACK_OFFSET + cpu.sp as usize)
-    }
-
-    /// Pushes a 16-bit number (usually an address) onto the stack.
-    pub fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16) {
-        self.write_u16_alt(STACK_OFFSET + cpu.sp as usize, value);
-        cpu.sp = cpu.sp.wrapping_sub(2);
-    }
-
-    /// Pops a 16-bit number (usually an address) off the stack.
-    pub fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
-        cpu.sp = cpu.sp.wrapping_add(2);
-        self.read_u16_alt(STACK_OFFSET + cpu.sp as usize)
-    }
-
+impl MemoryMapper for NROMMapper {
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
     fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool) {
@@ -250,5 +166,155 @@ impl Memory {
                 (&mut self.prg_rom_2, addr - PRG_ROM_2_START, false),
             _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) }
         }
+    }
+}
+
+impl Memory for NROMMapper {
+    fn new() -> Self {
+        NROMMapper {
+            ram: [0; RAM_SIZE],
+            ppu_ctrl_registers: [0; PPU_CTRL_REGISTERS_SIZE],
+            misc_ctrl_registers: [0; MISC_CTRL_REGISTERS_SIZE],
+            expansion_rom: [0; EXPANSION_ROM_SIZE],
+            sram: [0; SRAM_SIZE],
+            prg_rom_1: [0; PRG_ROM_SIZE],
+            prg_rom_2: [0; PRG_ROM_SIZE],
+        }
+    }
+
+    /// Reads an unsigned 8-bit byte value located at the given virtual address.
+    #[inline(always)]
+    fn read_u8(&mut self, addr: usize) -> u8 {
+        let (bank, idx, _) = self.map(addr);
+        bank[idx]
+    }
+
+    /// Writes an unsigned 8-bit byte value to the given virtual address.
+    #[inline(always)]
+    fn write_u8(&mut self, addr: usize, val: u8) {
+        let (bank, idx, writable) = self.map(addr);
+        if writable {
+            bank[idx] = val;
+        }
+    }
+
+    /// Writes an unsigned 8-bit byte value to the given virtual address.
+    #[inline(always)]
+    fn write_u8_unrestricted(&mut self, addr: usize, val: u8) {
+        let (bank, idx, _) = self.map(addr);
+        bank[idx] = val;
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian).
+    #[inline(always)]
+    fn read_u16(&mut self, addr: usize) -> u16 {
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![
+            self.read_u8(addr),
+            self.read_u8(addr + 1)
+        ]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian).
+    #[inline(always)]
+    fn read_u16_alt(&mut self, addr: usize) -> u16 {
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![
+            self.read_u8(addr - 1),
+            self.read_u8(addr)
+        ]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian) where the MSB is read at page start if the LSB is at
+    /// the end of a page. This exists to properly emulate a hardware bug in the
+    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
+    #[inline(always)]
+    fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16 {
+        let lsb = self.read_u8(addr);
+        let msb = if addr & 0xFF == 0xFF {
+            self.read_u8(addr - 0xFF)
+        } else {
+            self.read_u8(addr + 1)
+        };
+
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![lsb, msb]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Reads an unsigned 16-bit byte value at the given virtual address
+    /// (little-endian) where the MSB is read at page start if the LSB is at
+    /// the end of a page. This exists to properly emulate a hardware bug in the
+    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
+    #[inline(always)]
+    fn read_u16_wrapped_msb_alt(&mut self, addr: usize) -> u16 {
+        let lsb = self.read_u8(addr - 1);
+        let msb = if addr & 0xFF == 0xFF {
+            self.read_u8(addr - 0xFF)
+        } else {
+            self.read_u8(addr)
+        };
+
+        // Reads two bytes starting at the given address and parses them.
+        let mut reader = Cursor::new(vec![lsb, msb]);
+        reader.read_u16::<LittleEndian>().unwrap()
+    }
+
+    /// Writes an unsigned 16-bit byte value to the given virtual address
+    /// (little-endian)
+    #[inline(always)]
+    fn write_u16(&mut self, addr: usize, val: u16) {
+        let mut writer = vec![];
+        writer.write_u16::<LittleEndian>(val).unwrap();
+        self.write_u8(addr, writer[0]);
+        self.write_u8(addr + 1, writer[1]);
+    }
+
+    /// Writes an unsigned 16-bit byte value to the given virtual address
+    /// (little-endian)
+    #[inline(always)]
+    fn write_u16_alt(&mut self, addr: usize, val: u16) {
+        let mut writer = vec![];
+        writer.write_u16::<LittleEndian>(val).unwrap();
+        self.write_u8(addr - 1, writer[0]);
+        self.write_u8(addr, writer[1]);
+    }
+
+    /// Dumps the contents of a slice starting at a given address.
+    fn memdump(&mut self, addr: usize, buf: &[u8]) {
+        for i in 0..buf.len() {
+            self.write_u8_unrestricted(addr + i, buf[i]);
+        }
+    }
+
+    // Utility functions for managing the stack.
+
+    /// Pushes an 8-bit number onto the stack.
+    fn stack_push_u8(&mut self, cpu: &mut CPU, value: u8) {
+        self.write_u8(STACK_OFFSET + cpu.sp as usize, value);
+        cpu.sp = cpu.sp.wrapping_sub(1);
+    }
+
+    /// Pops an 8-bit number off the stack.
+    fn stack_pop_u8(&mut self, cpu: &mut CPU) -> u8 {
+        cpu.sp = cpu.sp.wrapping_add(1);
+        self.read_u8(STACK_OFFSET + cpu.sp as usize)
+    }
+
+    /// Pushes a 16-bit number (usually an address) onto the stack.
+    fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16) {
+        self.write_u16_alt(STACK_OFFSET + cpu.sp as usize, value);
+        cpu.sp = cpu.sp.wrapping_sub(2);
+    }
+
+    /// Pops a 16-bit number (usually an address) off the stack.
+    fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
+        cpu.sp = cpu.sp.wrapping_add(2);
+        self.read_u16_alt(STACK_OFFSET + cpu.sp as usize)
     }
 }
