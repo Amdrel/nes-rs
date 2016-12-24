@@ -62,6 +62,8 @@ impl<M: Memory> NES<M> {
         // addressable at their respective locations. However if there's only
         // one bank, make PRG-ROM bank 1 addressable starting from both
         // addresses.
+        //
+        // NOTE: Should this be moved to mapper code?
         if header.prg_rom_size == 2 {
             log::log("init", "2 PRG-ROM banks detected", &runtime_options);
             let prg_rom_1_addr = cursor;

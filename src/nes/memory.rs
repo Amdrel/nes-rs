@@ -59,130 +59,6 @@ pub trait Memory: MemoryMapper {
     fn new() -> Self;
 
     /// Reads an unsigned 8-bit byte value located at the given virtual address.
-    fn read_u8(&mut self, addr: usize) -> u8;
-
-    /// Writes an unsigned 8-bit byte value to the given virtual address.
-    fn write_u8(&mut self, addr: usize, val: u8);
-
-    /// Writes an unsigned 8-bit byte value to the given virtual address.
-    fn write_u8_unrestricted(&mut self, addr: usize, val: u8);
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian).
-    fn read_u16(&mut self, addr: usize) -> u16;
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian).
-    fn read_u16_alt(&mut self, addr: usize) -> u16;
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian) where the MSB is read at page start if the LSB is at
-    /// the end of a page. This exists to properly emulate a hardware bug in the
-    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
-    fn read_u16_wrapped_msb(&mut self, addr: usize) -> u16;
-
-    /// Reads an unsigned 16-bit byte value at the given virtual address
-    /// (little-endian) where the MSB is read at page start if the LSB is at
-    /// the end of a page. This exists to properly emulate a hardware bug in the
-    /// 2A03 where indirect jumps cannot fetch addresses outside it's own page.
-    fn read_u16_wrapped_msb_alt(&mut self, addr: usize) -> u16;
-
-    /// Writes an unsigned 16-bit byte value to the given virtual address
-    /// (little-endian)
-    fn write_u16(&mut self, addr: usize, val: u16);
-
-    /// Writes an unsigned 16-bit byte value to the given virtual address
-    /// (little-endian)
-    fn write_u16_alt(&mut self, addr: usize, val: u16);
-
-    /// Dumps the contents of a slice starting at a given address.
-    fn memdump(&mut self, addr: usize, buf: &[u8]);
-
-    /// Pushes an 8-bit number onto the stack.
-    fn stack_push_u8(&mut self, cpu: &mut CPU, value: u8);
-
-    /// Pops an 8-bit number off the stack.
-    fn stack_pop_u8(&mut self, cpu: &mut CPU) -> u8;
-
-    /// Pushes a 16-bit number (usually an address) onto the stack.
-    fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16);
-
-    /// Pops a 16-bit number (usually an address) off the stack.
-    fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16;
-}
-
-/// Partitioned physical memory layout for CPU memory. These fields are not
-/// meant to be accessed directly by the CPU implementation and are instead
-/// accessed through a read function that handles memory mapping.
-///
-/// NOTE: Currently all memory is allocated on the stack. This may not work well
-/// for systems with a small stack and slices should be boxed up.
-pub struct NROMMapper {
-    // 2kB of internal RAM for which it's use is entirely up to the programmer.
-    ram: [u8; RAM_SIZE],
-
-    // Contains PPU registers that allow the running application to communicate
-    // with the PPU.
-    ppu_ctrl_registers: [u8; PPU_CTRL_REGISTERS_SIZE],
-
-    // Contains NES APU and I/O registers. Also allows use of APU and I/O
-    // functionality that is normally disabled.
-    misc_ctrl_registers: [u8; MISC_CTRL_REGISTERS_SIZE],
-
-    expansion_rom: [u8; EXPANSION_ROM_SIZE],
-
-    // 8kB of static RAM.
-    sram: [u8; SRAM_SIZE],
-
-    // PRG-ROM bank 1.
-    prg_rom_1: [u8; PRG_ROM_SIZE],
-
-    // PRG-ROM bank 2. Execution starts here.
-    prg_rom_2: [u8; PRG_ROM_SIZE]
-}
-
-impl MemoryMapper for NROMMapper {
-    /// Maps a given virtual address to a physical address internal to the
-    /// emulator. Returns a memory buffer and index for physical memory access.
-    fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool) {
-        match addr {
-            RAM_START_ADDR...RAM_END_ADDR =>
-                (&mut self.ram, addr, true),
-            RAM_MIRROR_START...RAM_MIRROR_END =>
-                (&mut self.ram, addr % RAM_SIZE, true),
-            PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END =>
-                (&mut self.ppu_ctrl_registers, addr - PPU_CTRL_REGISTERS_START, true),
-            PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
-                (&mut self.ppu_ctrl_registers, (addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE, true),
-            MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
-                (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START, true),
-            EXPANSION_ROM_START...EXPANSION_ROM_END =>
-                (&mut self.expansion_rom, addr - EXPANSION_ROM_START, false),
-            SRAM_START...SRAM_END =>
-                (&mut self.sram, addr - SRAM_START, true),
-            PRG_ROM_1_START...PRG_ROM_1_END =>
-                (&mut self.prg_rom_1, addr - PRG_ROM_1_START, false),
-            PRG_ROM_2_START...PRG_ROM_2_END =>
-                (&mut self.prg_rom_2, addr - PRG_ROM_2_START, false),
-            _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) }
-        }
-    }
-}
-
-impl Memory for NROMMapper {
-    fn new() -> Self {
-        NROMMapper {
-            ram: [0; RAM_SIZE],
-            ppu_ctrl_registers: [0; PPU_CTRL_REGISTERS_SIZE],
-            misc_ctrl_registers: [0; MISC_CTRL_REGISTERS_SIZE],
-            expansion_rom: [0; EXPANSION_ROM_SIZE],
-            sram: [0; SRAM_SIZE],
-            prg_rom_1: [0; PRG_ROM_SIZE],
-            prg_rom_2: [0; PRG_ROM_SIZE],
-        }
-    }
-
-    /// Reads an unsigned 8-bit byte value located at the given virtual address.
     #[inline(always)]
     fn read_u8(&mut self, addr: usize) -> u8 {
         let (bank, idx, _) = self.map(addr);
@@ -316,5 +192,74 @@ impl Memory for NROMMapper {
     fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
         cpu.sp = cpu.sp.wrapping_add(2);
         self.read_u16_alt(STACK_OFFSET + cpu.sp as usize)
+    }
+}
+
+/// Partitioned physical memory layout for CPU memory. These fields are not
+/// meant to be accessed directly by the CPU implementation and are instead
+/// accessed through a read function that handles memory mapping.
+///
+/// NOTE: Currently all memory is allocated on the stack. This may not work well
+/// for systems with a small stack and slices should be boxed up.
+pub struct NROMMapper {
+    // 2kB of internal RAM which contains zero page, the stack, and general
+    // purpose memory.
+    ram: [u8; RAM_SIZE],
+
+    // Contains PPU registers that allow the running application to communicate
+    // with the PPU.
+    ppu_ctrl_registers: [u8; PPU_CTRL_REGISTERS_SIZE],
+
+    // Contains NES APU and I/O registers. Also allows use of APU and I/O
+    // functionality that is normally disabled.
+    misc_ctrl_registers: [u8; MISC_CTRL_REGISTERS_SIZE],
+
+    expansion_rom: [u8; EXPANSION_ROM_SIZE],
+    sram: [u8; SRAM_SIZE],
+
+    // Read-only ROM which contains executable code and assets.
+    prg_rom_1: [u8; PRG_ROM_SIZE],
+    prg_rom_2: [u8; PRG_ROM_SIZE]
+}
+
+impl MemoryMapper for NROMMapper {
+    /// Maps a given virtual address to a physical address internal to the
+    /// emulator. Returns a memory buffer and index for physical memory access.
+    fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool) {
+        match addr {
+            RAM_START_ADDR...RAM_END_ADDR =>
+                (&mut self.ram, addr, true),
+            RAM_MIRROR_START...RAM_MIRROR_END =>
+                (&mut self.ram, addr % RAM_SIZE, true),
+            PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END =>
+                (&mut self.ppu_ctrl_registers, addr - PPU_CTRL_REGISTERS_START, true),
+            PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
+                (&mut self.ppu_ctrl_registers, (addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE, true),
+            MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
+                (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START, true),
+            EXPANSION_ROM_START...EXPANSION_ROM_END =>
+                (&mut self.expansion_rom, addr - EXPANSION_ROM_START, false),
+            SRAM_START...SRAM_END =>
+                (&mut self.sram, addr - SRAM_START, true),
+            PRG_ROM_1_START...PRG_ROM_1_END =>
+                (&mut self.prg_rom_1, addr - PRG_ROM_1_START, false),
+            PRG_ROM_2_START...PRG_ROM_2_END =>
+                (&mut self.prg_rom_2, addr - PRG_ROM_2_START, false),
+            _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) }
+        }
+    }
+}
+
+impl Memory for NROMMapper {
+    fn new() -> Self {
+        NROMMapper {
+            ram: [0; RAM_SIZE],
+            ppu_ctrl_registers: [0; PPU_CTRL_REGISTERS_SIZE],
+            misc_ctrl_registers: [0; MISC_CTRL_REGISTERS_SIZE],
+            expansion_rom: [0; EXPANSION_ROM_SIZE],
+            sram: [0; SRAM_SIZE],
+            prg_rom_1: [0; PRG_ROM_SIZE],
+            prg_rom_2: [0; PRG_ROM_SIZE],
+        }
     }
 }
