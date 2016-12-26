@@ -42,6 +42,7 @@ impl<M: Memory> NES<M> {
         // of a trainer will shift the locations of other structures.
         let mut cursor: usize = 0x10;
 
+        // Spew out some useful metadata about the rom when verbose is on.
         log::log("init", format!("Using {:?} mapper", header.mapper()), &runtime_options);
         log::log("init", format!("Using {:?} mirroring", header.mirror_type()), &runtime_options);
 
@@ -79,7 +80,7 @@ impl<M: Memory> NES<M> {
 
         NES {
             header: header,
-            cpu: CPU::new(runtime_options.clone()),
+            cpu: CPU::new(runtime_options.clone(), runtime_options.program_counter),
             runtime_options: runtime_options,
             memory: memory,
         }
@@ -130,5 +131,6 @@ impl<M: Memory> NES<M> {
 #[derive(Clone)]
 pub struct NESRuntimeOptions {
     pub cpu_log: Option<String>,
+    pub program_counter: Option<u16>,
     pub verbose: bool,
 }

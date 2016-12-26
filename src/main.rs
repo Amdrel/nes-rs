@@ -24,6 +24,7 @@ use nes::nes::NES;
 use nes::nes::NESRuntimeOptions;
 use std::env;
 use std::io::Write;
+use std::u16;
 
 /// Prints the application name alongside the cargo version.
 fn print_version() {
@@ -57,6 +58,7 @@ fn init() -> i32 {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     opts.optopt("t", "test", "test the emulator against a CPU log", "[FILE]");
+    opts.optopt("p", "program-counter", "set the initial program counter to a specified address", "[HEX]");
     opts.optflag("v", "verbose", "display CPU frame information");
     opts.optflag("", "version", "print version information");
     opts.optflag("h", "help", "print this message");
@@ -79,8 +81,8 @@ fn init() -> i32 {
         return EXIT_SUCCESS
     }
 
-    // Get the rom filename from the first free argument and read the ROM into
-    // memory (vector of bytes).
+    // Get the ROM filename from the first free argument and read the ROM into
+    // memory (vector of bytes). The ROM is a required argument.
     let rom_file_name = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
@@ -107,14 +109,41 @@ fn init() -> i32 {
             return EXIT_INVALID_ROM
         }
     };
-    let runtime_options = NESRuntimeOptions {
-        cpu_log: matches.opt_str("test"),
-        verbose: matches.opt_present("verbose"),
+
+    // Parse the program counter argument if specified which will then be passed
+    // to the CPU later on.
+    let program_counter = match matches.opt_str("program-counter") {
+        Some(arg) => {
+            // Ignore the first 2 characters in the hex string if they're "0x"
+            // as users are likely to insert this when inputting hexadecimal
+            // numbers.
+            let hex = if &arg[0..2] == "0x" {
+                &arg[2..]
+            } else {
+                arg.as_str()
+            };
+
+            // Convert the hex string to a 16-bit unsigned integer.
+            match u16::from_str_radix(hex, 16) {
+                Ok(pc) => Some(pc),
+                Err(e) => {
+                    let mut stderr = std::io::stderr();
+                    writeln!(stderr, "nes-rs: cannot parse program counter: {}", e).unwrap();
+                    return EXIT_INVALID_PC;
+                },
+            }
+        },
+        None => None,
     };
 
     // Initialize the NES with the mapper specified in the INES file and start
     // executing the ROM. The run function will only return when there is a
     // panic in the CPU or other emulated hardware.
+    let runtime_options = NESRuntimeOptions {
+        cpu_log: matches.opt_str("test"),
+        verbose: matches.opt_present("verbose"),
+        program_counter: program_counter,
+    };
     match header.mapper() {
         NROM => {
             let mut nes: NES<NROMMapper> = NES::new(rom, header, runtime_options);

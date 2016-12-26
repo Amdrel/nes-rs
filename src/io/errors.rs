@@ -12,4 +12,5 @@ pub const EXIT_SUCCESS          : i32 = 0;
 pub const EXIT_FAILURE          : i32 = 1; // Generic error ¯\_(ツ)_/¯.
 pub const EXIT_INVALID_ROM      : i32 = 2; // Invalid rom passed.
 pub const EXIT_CPU_LOG_NOT_FOUND: i32 = 3;
+pub const EXIT_INVALID_PC       : i32 = 4;
 pub const EXIT_RUNTIME_FAILURE  : i32 = 101;

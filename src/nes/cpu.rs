@@ -136,9 +136,12 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(runtime_options: NESRuntimeOptions) -> CPU {
+    pub fn new(runtime_options: NESRuntimeOptions, pc: Option<u16>) -> CPU {
         CPU {
-            pc: 0xC000,
+            pc: match pc {
+                Some(pc) => pc,
+                None => 0xFFFC,
+            },
             sp: 0xFD,
             a: 0,
             x: 0,
