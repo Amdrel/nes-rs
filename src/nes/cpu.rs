@@ -128,6 +128,9 @@ pub struct CPU {
     // their complexity.
     pub cycles: u16,
 
+    // Number of cycles since last v-sync.
+    pub ppu_dots: u16,
+
     // Options passed from the command-line that may influence how the CPU
     // behaves.
     runtime_options: NESRuntimeOptions,
@@ -147,6 +150,7 @@ impl CPU {
             y: 0,
             p: 0x24,
             cycles: 0,
+            ppu_dots: 0,
             runtime_options: runtime_options,
             execution_log: None,
         }
@@ -349,7 +353,10 @@ impl CPU {
                 }
             }
         }
+
         instr.execute(self, memory);
+        self.ppu_dots = (self.ppu_dots + (self.cycles * 3)) % 341;
+        self.cycles = 0;
     }
 
     /// Returns "SET" if the passed boolean is true, otherwise "UNSET". This
@@ -392,6 +399,7 @@ struct CPUFrame {
     y: u8,
     p: u8,
     sp: u8,
+    cycles: u16,
 }
 
 impl CPUFrame {
@@ -407,12 +415,13 @@ impl CPUFrame {
         Ok(CPUFrame {
             instruction: instr,
             disassembly: String::from(&frame[16..46]),
-            pc: try!(u16::from_str_radix(&frame[0..4], 16)),
-            a:  try!(u8::from_str_radix(&frame[50..52], 16)),
-            x:  try!(u8::from_str_radix(&frame[55..57], 16)),
-            y:  try!(u8::from_str_radix(&frame[60..62], 16)),
-            p:  try!(u8::from_str_radix(&frame[65..67], 16)),
-            sp: try!(u8::from_str_radix(&frame[71..73], 16)),
+            pc:     try!(u16::from_str_radix(&frame[0..4], 16)),
+            a:      try!(u8::from_str_radix(&frame[50..52], 16)),
+            x:      try!(u8::from_str_radix(&frame[55..57], 16)),
+            y:      try!(u8::from_str_radix(&frame[60..62], 16)),
+            p:      try!(u8::from_str_radix(&frame[65..67], 16)),
+            sp:     try!(u8::from_str_radix(&frame[71..73], 16)),
+            cycles: try!(u16::from_str_radix(&frame[78..81].trim(), 10)),
         })
     }
 

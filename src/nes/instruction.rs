@@ -234,7 +234,7 @@ impl Instruction {
         //       0       6   16     48       53       58       63       68        74
         format!("{:04X}  {}  {:30}  A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}",
                  cpu.pc, instr_str, disassembled, cpu.a, cpu.x, cpu.y, cpu.p,
-                 cpu.sp, 0)
+                 cpu.sp, cpu.ppu_dots)
     }
 
     /// Execute the instruction with a routine that corresponds with it's
@@ -328,7 +328,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -340,7 +340,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -352,7 +352,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -364,7 +364,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -546,7 +546,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -558,7 +558,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -570,7 +570,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
@@ -582,7 +582,7 @@ impl Instruction {
                     let old_pc = cpu.pc as usize;
                     cpu.pc = add_relative(cpu.pc, self.relative());
                     cpu.cycles += 1;
-                    if page_cross(old_pc, cpu.pc as usize) != PageCross::Same {
+                    if page_cross(old_pc.wrapping_add(len as usize), cpu.pc as usize) != PageCross::Same {
                         cpu.cycles += 2;
                     }
                 }
