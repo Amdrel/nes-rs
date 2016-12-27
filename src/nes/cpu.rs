@@ -16,7 +16,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::num::ParseIntError;
 use std::thread;
-use std::time;
+use std::time::Duration;
 use std::u16;
 use std::u8;
 use utils::arithmetic;
@@ -29,6 +29,9 @@ pub const DECIMAL_MODE     : u8 = 0x8;
 pub const BREAK_COMMAND    : u8 = 0x10;
 pub const OVERFLOW_FLAG    : u8 = 0x40;
 pub const NEGATIVE_FLAG    : u8 = 0x80;
+
+// How long it takes for a cycle to complete.
+const CLOCK_SPEED: f32 = 558.65921787709;
 
 /// This is an implementation of 2A03 processor used in the NES. The 2A03 is
 /// based off the 6502 processor with some minor changes such as having no
@@ -355,6 +358,7 @@ impl CPU {
         }
 
         instr.execute(self, memory);
+        thread::sleep(Duration::new(0, (CLOCK_SPEED * self.cycles as f32) as u32));
         self.ppu_dots = (self.ppu_dots + (self.cycles * 3)) % 341;
         self.cycles = 0;
     }
