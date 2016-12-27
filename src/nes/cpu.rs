@@ -15,6 +15,8 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::num::ParseIntError;
+use std::thread;
+use std::time;
 use std::u16;
 use std::u8;
 use utils::arithmetic;
@@ -136,12 +138,9 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(runtime_options: NESRuntimeOptions, pc: Option<u16>) -> CPU {
+    pub fn new(runtime_options: NESRuntimeOptions, pc: u16) -> CPU {
         CPU {
-            pc: match pc {
-                Some(pc) => pc,
-                None => 0xFFFC,
-            },
+            pc: pc,
             sp: 0xFD,
             a: 0,
             x: 0,

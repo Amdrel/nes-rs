@@ -167,6 +167,7 @@ impl Instruction {
             LDYZeroX => self.disassemble_zero_page_x("LDY", memory, cpu),
             LDYAbs   => self.disassemble_absolute("LDY", memory),
             LDYAbsX  => self.disassemble_absolute_x("LDY", memory, cpu),
+            //BRKImp   =>
             NOPImp   => self.disassemble_implied("NOP"),
             PHAImp   => self.disassemble_implied("PHA"),
             PHPImp   => self.disassemble_implied("PHP"),

@@ -78,9 +78,19 @@ impl<M: Memory> NES<M> {
             memory.memdump(PRG_ROM_2_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
         }
 
+        // Set the initial program counter to the address stored at 0xFFFC (this
+        // allows ROMs to specify entry point). If a program counter was
+        // specified on the command-line, use that one instead.
+        let pc = match runtime_options.program_counter {
+            Some(pc) => pc,
+            None => {
+                memory.read_u16(0xFFFC)
+            },
+        };
+
         NES {
             header: header,
-            cpu: CPU::new(runtime_options.clone(), runtime_options.program_counter),
+            cpu: CPU::new(runtime_options.clone(), pc),
             runtime_options: runtime_options,
             memory: memory,
         }
