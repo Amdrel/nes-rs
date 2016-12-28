@@ -162,6 +162,8 @@ enum_from_primitive! {
         TXAImp   = 0x8A,
         TXSImp   = 0x9A,
         TYAImp   = 0x98,
+
+        PatternWorkaround = 0xFF,
     }
 }
 
@@ -329,5 +331,7 @@ pub fn opcode_len(opcode: &Opcode) -> u8 {
         TXAImp   => 1,
         TXSImp   => 1,
         TYAImp   => 1,
+
+        PatternWorkaround => 0,
     }
 }

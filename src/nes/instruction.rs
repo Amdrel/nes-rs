@@ -167,7 +167,7 @@ impl Instruction {
             LDYZeroX => self.disassemble_zero_page_x("LDY", memory, cpu),
             LDYAbs   => self.disassemble_absolute("LDY", memory),
             LDYAbsX  => self.disassemble_absolute_x("LDY", memory, cpu),
-            //BRKImp   =>
+            BRKImp   => self.disassemble_implied("BRK"),
             NOPImp   => self.disassemble_implied("NOP"),
             PHAImp   => self.disassemble_implied("PHA"),
             PHPImp   => self.disassemble_implied("PHP"),
@@ -1785,6 +1785,16 @@ impl Instruction {
                 }
                 cpu.cycles += 4;
                 cpu.pc += len;
+            },
+            BRKImp => {
+                // Fires an IRQ interrupt.
+                let p = cpu.p;
+                let pc = cpu.pc;
+                memory.stack_push_u16(cpu, pc);
+                memory.stack_push_u8(cpu, p);
+                cpu.set_break_command();
+                cpu.pc = memory.read_u16(0xFFFE);
+                cpu.cycles += 7;
             },
             NOPImp => {
                 // This is the most difficult instruction to implement.
