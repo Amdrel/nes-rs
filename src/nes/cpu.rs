@@ -357,8 +357,17 @@ impl CPU {
             }
         }
 
+        // Execute the instruction located at the current PC.
         instr.execute(self, memory);
+
+        // The instruction execution should have updated the remaining cycle count in the CPU.
+        // Sleep for the clock speed multiplied by the cycle cound.
+        //
+        // NOTE: When interrupts are implemented, this may have to be changed as some interrupts
+        // are delayed by n number of cycles.
         thread::sleep(Duration::new(0, (CLOCK_SPEED * self.cycles as f32) as u32));
+
+        // Reset cycles and set PPU dots for debugging purposes.
         self.ppu_dots = (self.ppu_dots + (self.cycles * 3)) % 341;
         self.cycles = 0;
     }
