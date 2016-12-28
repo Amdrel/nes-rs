@@ -22,13 +22,13 @@ use std::u8;
 use utils::arithmetic;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
-pub const CARRY_FLAG       : u8 = 0x1;
-pub const ZERO_FLAG        : u8 = 0x2;
+pub const CARRY_FLAG:        u8 = 0x1;
+pub const ZERO_FLAG:         u8 = 0x2;
 pub const INTERRUPT_DISABLE: u8 = 0x4;
-pub const DECIMAL_MODE     : u8 = 0x8;
-pub const BREAK_COMMAND    : u8 = 0x10;
-pub const OVERFLOW_FLAG    : u8 = 0x40;
-pub const NEGATIVE_FLAG    : u8 = 0x80;
+pub const DECIMAL_MODE:      u8 = 0x8;
+pub const BREAK_COMMAND:     u8 = 0x10;
+pub const OVERFLOW_FLAG:     u8 = 0x40;
+pub const NEGATIVE_FLAG:     u8 = 0x80;
 
 // How long it takes for a cycle to complete.
 const CLOCK_SPEED: f32 = 558.65921787709;
