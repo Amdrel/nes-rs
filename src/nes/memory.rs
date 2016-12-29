@@ -8,7 +8,6 @@
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use nes::cpu::CPU;
-use nes::ppu::PPU;
 use std::io::Cursor;
 
 // Memory partition sizes (physical).
@@ -48,11 +47,43 @@ pub const TRAINER_SIZE:  usize = 512;
 // memory page 2 (0x100).
 const STACK_OFFSET: usize = 0x100;
 
+/// Possible states of PPU registers.
+#[derive(Clone, Copy)]
+pub enum PPURegisterStatus {
+    Read,
+    Written,
+    WrittenTwice,
+    Untouched,
+}
+
 pub trait MemoryMapper {
+    /// Returns a slice of PPU registers.
+    fn ppu_ctrl_registers(&mut self) -> &mut [u8];
+
+    /// Returns a slice of each PPU register's status.
+    fn ppu_ctrl_registers_status(&mut self) -> &mut [PPURegisterStatus];
+
     /// Map should map a given virtual address to either a physical address to
     /// host memory or to some control mechanism. How memory is mapped depends
     /// on the cartridge being used by the INES ROM.
     fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool);
+
+    /// Deals with the fact that different PPU I/O registers have different read
+    /// and write access.
+    fn map_ppu_registers(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool) {
+        let registers = self.ppu_ctrl_registers();
+        match addr {
+            0 => (registers, addr, false, true),
+            1 => (registers, addr, false, true),
+            2 => (registers, addr, true, false),
+            3 => (registers, addr, false, true),
+            4 => (registers, addr, true, true),
+            5 => (registers, addr, false, true), // Twice
+            6 => (registers, addr, false, true), // Twice
+            7 => (registers, addr, true, true),
+            _ => (registers, addr, true, true),
+        }
+    }
 }
 
 pub trait Memory: MemoryMapper {
@@ -215,6 +246,11 @@ pub struct NROMMapper {
     // with the PPU.
     ppu_ctrl_registers: [u8; PPU_CTRL_REGISTERS_SIZE],
 
+    // Current read/write status of all PPU registers stored in memory.
+    ppu_ctrl_registers_status: [PPURegisterStatus; PPU_CTRL_REGISTERS_SIZE],
+
+    // TODO: Add ring buffer for double write registers.
+
     // Contains NES APU and I/O registers. Also allows use of APU and I/O
     // functionality that is normally disabled.
     misc_ctrl_registers: [u8; MISC_CTRL_REGISTERS_SIZE],
@@ -227,28 +263,17 @@ pub struct NROMMapper {
     prg_rom_2: [u8; PRG_ROM_SIZE]
 }
 
-impl NROMMapper {
-    /// Deals with the fact that different PPU I/O registers have different read
-    /// and write access.
-    ///
-    /// TODO: Call PPU hooks.
-    fn map_ppu_registers(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool) {
-        let registers = &mut self.ppu_ctrl_registers;
-        match addr {
-            0 => (registers, addr, false, true),
-            1 => (registers, addr, false, true),
-            2 => (registers, addr, true, false),
-            3 => (registers, addr, false, true),
-            4 => (registers, addr, true, true),
-            5 => (registers, addr, false, true), // Twice
-            6 => (registers, addr, false, true), // Twice
-            7 => (registers, addr, true, true),
-            _ => (registers, addr, true, true),
-        }
-    }
-}
-
 impl MemoryMapper for NROMMapper {
+    /// Returns a slice of PPU registers.
+    fn ppu_ctrl_registers(&mut self) -> &mut [u8] {
+        &mut self.ppu_ctrl_registers
+    }
+
+    /// Returns a slice of each PPU register's status.
+    fn ppu_ctrl_registers_status(&mut self) -> &mut [PPURegisterStatus] {
+        &mut self.ppu_ctrl_registers_status
+    }
+
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
     fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool) {
@@ -281,6 +306,7 @@ impl Memory for NROMMapper {
         NROMMapper {
             ram: [0; RAM_SIZE],
             ppu_ctrl_registers: [0; PPU_CTRL_REGISTERS_SIZE],
+            ppu_ctrl_registers_status: [PPURegisterStatus::Untouched; PPU_CTRL_REGISTERS_SIZE],
             misc_ctrl_registers: [0; MISC_CTRL_REGISTERS_SIZE],
             expansion_rom: [0; EXPANSION_ROM_SIZE],
             sram: [0; SRAM_SIZE],
