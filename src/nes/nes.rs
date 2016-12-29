@@ -10,6 +10,7 @@ use io::binutils::INESHeader;
 use io::errors::*;
 use io::log;
 use nes::cpu::CPU;
+use nes::ppu::PPU;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Write;
@@ -31,7 +32,8 @@ pub struct NES<M: Memory> {
     pub header: INESHeader,
     pub runtime_options: NESRuntimeOptions,
     pub cpu: CPU,
-    pub memory: M
+    pub ppu: PPU,
+    pub memory: M,
 }
 
 impl<M: Memory> NES<M> {
@@ -91,6 +93,7 @@ impl<M: Memory> NES<M> {
         NES {
             header: header,
             cpu: CPU::new(runtime_options.clone(), pc),
+            ppu: PPU::new(),
             runtime_options: runtime_options,
             memory: memory,
         }

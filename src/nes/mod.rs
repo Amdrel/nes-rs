@@ -9,6 +9,7 @@
 mod cpu;
 mod instruction;
 mod opcode;
+mod ppu;
 
 pub mod memory;
 pub mod nes;
