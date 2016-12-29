@@ -48,12 +48,23 @@ pub const TRAINER_SIZE:  usize = 512;
 const STACK_OFFSET: usize = 0x100;
 
 /// Possible states of PPU registers.
-#[derive(Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PPURegisterStatus {
     Read,
     Written,
     WrittenTwice,
     Untouched,
+}
+
+/// Different operation that can be performed on memory.
+///
+/// This enum is used with the mapping function so the PPU is informed of writes
+/// to it's I/O registers over the virtual "bus".
+#[derive(PartialEq)]
+pub enum MemoryOperation {
+    Read,
+    Write,
+    Nop,
 }
 
 pub trait MemoryMapper {
@@ -66,11 +77,32 @@ pub trait MemoryMapper {
     /// Map should map a given virtual address to either a physical address to
     /// host memory or to some control mechanism. How memory is mapped depends
     /// on the cartridge being used by the INES ROM.
-    fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool);
+    fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool);
 
     /// Deals with the fact that different PPU I/O registers have different read
     /// and write access.
-    fn map_ppu_registers(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool) {
+    fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+        {
+            // Update the register status before mapping so the PPU knows which
+            // registers were touched after the memory operation.
+            //
+            // In the event that the PPU register has already been written to
+            // and is being written to again, set the status to WrittenTwice.
+            let registers_status = self.ppu_ctrl_registers_status();
+            if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
+                registers_status[addr] = PPURegisterStatus::WrittenTwice;
+            } else {
+                registers_status[addr] = match operation {
+                    MemoryOperation::Read  => PPURegisterStatus::Read,
+                    MemoryOperation::Write => PPURegisterStatus::Written,
+                    MemoryOperation::Nop   => registers_status[addr],
+                };
+            }
+
+            //println!("{:?}", registers_status);
+        }
+
+        // Each I/O register has it's own read/write permissions.
         let registers = self.ppu_ctrl_registers();
         match addr {
             0 => (registers, addr, false, true),
@@ -93,7 +125,7 @@ pub trait Memory: MemoryMapper {
     /// Reads an unsigned 8-bit byte value located at the given virtual address.
     #[inline(always)]
     fn read_u8(&mut self, addr: usize) -> u8 {
-        let (bank, idx, readable, _) = self.map(addr);
+        let (bank, idx, readable, _) = self.map(addr, MemoryOperation::Read);
         if readable {
             bank[idx]
         } else {
@@ -104,7 +136,7 @@ pub trait Memory: MemoryMapper {
     /// Writes an unsigned 8-bit byte value to the given virtual address.
     #[inline(always)]
     fn write_u8(&mut self, addr: usize, val: u8) {
-        let (bank, idx, _, writable) = self.map(addr);
+        let (bank, idx, _, writable) = self.map(addr, MemoryOperation::Write);
         if writable {
             bank[idx] = val;
         }
@@ -113,7 +145,7 @@ pub trait Memory: MemoryMapper {
     /// Writes an unsigned 8-bit byte value to the given virtual address.
     #[inline(always)]
     fn write_u8_unrestricted(&mut self, addr: usize, val: u8) {
-        let (bank, idx, _, _) = self.map(addr);
+        let (bank, idx, _, _) = self.map(addr, MemoryOperation::Nop);
         bank[idx] = val;
     }
 
@@ -276,16 +308,16 @@ impl MemoryMapper for NROMMapper {
 
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
-    fn map(&mut self, addr: usize) -> (&mut [u8], usize, bool, bool) {
+    fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         match addr {
             RAM_START_ADDR...RAM_END_ADDR =>
                 (&mut self.ram, addr, true, true),
             RAM_MIRROR_START...RAM_MIRROR_END =>
                 (&mut self.ram, addr % RAM_SIZE, true, true),
             PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END =>
-                self.map_ppu_registers(addr - PPU_CTRL_REGISTERS_START),
+                self.map_ppu_registers(addr - PPU_CTRL_REGISTERS_START, operation),
             PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
-                self.map_ppu_registers((addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE),
+                self.map_ppu_registers((addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE, operation),
             MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
                 (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START, true, true),
             EXPANSION_ROM_START...EXPANSION_ROM_END =>
