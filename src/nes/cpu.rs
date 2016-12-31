@@ -329,7 +329,7 @@ impl CPU {
 
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
-    pub fn execute<M: Memory>(&mut self, memory: &mut M) {
+    pub fn execute<M: Memory>(&mut self, memory: &mut M) -> u16 {
         let instr = Instruction::parse(self.pc as usize, memory);
         if self.runtime_options.verbose || self.execution_log.is_some() {
             let raw_fragment = instr.log(self, memory);
@@ -360,6 +360,10 @@ impl CPU {
         // Execute the instruction located at the current PC.
         instr.execute(self, memory);
 
+        // Save the cycle count of the last instruction execution so it may be
+        // returned after sleeping through the cycles.
+        let old_cycles = self.cycles;
+
         // The instruction execution should have updated the remaining cycle count in the CPU.
         // Sleep for the clock speed multiplied by the cycle cound.
         //
@@ -370,6 +374,10 @@ impl CPU {
         // Reset cycles and set PPU dots for debugging purposes.
         self.ppu_dots = (self.ppu_dots + (self.cycles * 3)) % 341;
         self.cycles = 0;
+
+        // Return the number of cycles that was required to execute the
+        // instruction so the PPU can be synchronized.
+        old_cycles
     }
 
     /// Returns "SET" if the passed boolean is true, otherwise "UNSET". This

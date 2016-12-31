@@ -93,7 +93,7 @@ impl<M: Memory> NES<M> {
         NES {
             header: header,
             cpu: CPU::new(runtime_options.clone(), pc),
-            ppu: PPU::new(),
+            ppu: PPU::new(runtime_options.clone()),
             runtime_options: runtime_options,
             memory: memory,
         }
@@ -120,11 +120,19 @@ impl<M: Memory> NES<M> {
             None => {},
         }
 
-        // Start executing the CPU and add a panic catcher so crash information
-        // can be shown if the CPU panics.
+        // Start cycling the CPU and PPU and add a panic catcher so crash
+        // information can be shown if the CPU panics.
+        //
+        // The PPU cycles every 3 CPU cycles, though there may need to be
+        // changes made for PAL (currently assumes NTSC PPU clock speed).
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            let mut cycles: u16 = 0;
             loop {
-                self.cpu.execute(&mut self.memory);
+                cycles += self.cpu.execute(&mut self.memory);
+                while cycles >= 3 {
+                    self.ppu.execute();
+                    cycles -= 3;
+                }
             }
         }));
         match result {
