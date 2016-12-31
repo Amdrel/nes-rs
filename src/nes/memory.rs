@@ -308,6 +308,9 @@ impl MemoryMapper for NROMMapper {
 
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
+    ///
+    /// TODO: Switch all references to struct members to functions so this
+    /// mapper implementation can be shared between ROM mappers.
     fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         match addr {
             RAM_START_ADDR...RAM_END_ADDR =>
@@ -328,7 +331,7 @@ impl MemoryMapper for NROMMapper {
                 (&mut self.prg_rom_1, addr - PRG_ROM_1_START, true, false),
             PRG_ROM_2_START...PRG_ROM_2_END =>
                 (&mut self.prg_rom_2, addr - PRG_ROM_2_START, true, false),
-            _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) }
+            _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) },
         }
     }
 }

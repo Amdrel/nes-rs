@@ -130,7 +130,7 @@ impl<M: Memory> NES<M> {
             loop {
                 cycles += self.cpu.execute(&mut self.memory);
                 while cycles >= 3 {
-                    self.ppu.execute();
+                    self.ppu.execute(&mut self.memory);
                     cycles -= 3;
                 }
             }
@@ -149,7 +149,7 @@ impl<M: Memory> NES<M> {
 }
 
 /// Flags and other information set through command-line arguments.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NESRuntimeOptions {
     pub cpu_log: Option<String>,
     pub program_counter: Option<u16>,
