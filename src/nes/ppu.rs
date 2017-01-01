@@ -8,6 +8,8 @@
 
 use io::log;
 use nes::memory::Memory;
+use nes::memory::MiscRegisterStatus;
+use nes::memory::PPURegisterStatus;
 use nes::nes::NESRuntimeOptions;
 
 const SPR_RAM_SIZE: usize = 0x00FF;
@@ -105,10 +107,35 @@ impl PPU {
         bank[addr] = value;
     }
 
+    /// Copy data from main memory to the PPU's internal sprite memory.
     fn exec_dma(&mut self) {
     }
 
-    pub fn execute<M: Memory>(&mut self, memory: &mut M) {
+    /// Checks the status of PPU I/O registers and executes PPU functionality
+    /// depending on their states.
+    fn check_ppu_registers<M: Memory>(&mut self, memory: &mut M) {
+        let io_registers_state = memory.ppu_ctrl_registers_status();
+        for (index, state) in io_registers_state.iter().enumerate() {
+            println!("PPU REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
+        }
+    }
+
+    /// Checks the status of misc I/O registers and executes PPU functionality
+    /// depending on their states.
+    fn check_misc_registers<M: Memory>(&mut self, memory: &mut M) {
+        let io_registers_state = memory.misc_ctrl_registers_status();
+        for (index, state) in io_registers_state.iter().enumerate() {
+            println!("MISC REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
+        }
+    }
+
+    /// Executes routine PPU logic and returns stolen cycles from operations
+    /// such as DMA transfers if the PPU hogged the main memory bus.
+    pub fn execute<M: Memory>(&mut self, memory: &mut M) -> u16 {
+        self.check_ppu_registers(memory);
+        self.check_misc_registers(memory);
+
         log::log("ppu", "PPU cycle complete", &self.runtime_options);
+        0
     }
 }

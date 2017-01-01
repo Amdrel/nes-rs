@@ -43,18 +43,12 @@ pub const PRG_ROM_2_END:                   usize = 0xFFFF;
 pub const TRAINER_START: usize = 0x7000;
 pub const TRAINER_SIZE:  usize = 512;
 
+// Location of the DMA register for copying sprite data to the PPU.
+pub const DMA_REGISTER: usize = 0x4014;
+
 // Location of the first byte on the bottom of the stack. The stack starts on
 // memory page 2 (0x100).
 const STACK_OFFSET: usize = 0x100;
-
-/// Possible states of PPU registers.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum PPURegisterStatus {
-    Read,
-    Written,
-    WrittenTwice,
-    Untouched,
-}
 
 /// Different operation that can be performed on memory.
 ///
@@ -67,6 +61,23 @@ pub enum MemoryOperation {
     Nop,
 }
 
+/// Possible states of the PPU registers.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum PPURegisterStatus {
+    Read,
+    Written,
+    WrittenTwice,
+    Untouched,
+}
+
+/// Possible states of the misc registers.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum MiscRegisterStatus {
+    Read,
+    Written,
+    Untouched,
+}
+
 pub trait MemoryMapper {
     /// Returns a slice of PPU registers.
     fn ppu_ctrl_registers(&mut self) -> &mut [u8];
@@ -74,13 +85,19 @@ pub trait MemoryMapper {
     /// Returns a slice of each PPU register's status.
     fn ppu_ctrl_registers_status(&mut self) -> &mut [PPURegisterStatus];
 
+    /// Returns a slice of misc registers.
+    fn misc_ctrl_registers(&mut self) -> &mut [u8];
+
+    /// Returns a slice of each misc register's status.
+    fn misc_ctrl_registers_status(&mut self) -> &mut [MiscRegisterStatus];
+
     /// Map should map a given virtual address to either a physical address to
     /// host memory or to some control mechanism. How memory is mapped depends
     /// on the cartridge being used by the INES ROM.
     fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool);
 
-    /// Deals with the fact that different PPU I/O registers have different read
-    /// and write access.
+    /// Handles read / write behavior of individual I/O registers and tracks
+    /// their dirty state.
     fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         {
             // Update the register status before mapping so the PPU knows which
@@ -107,7 +124,7 @@ pub trait MemoryMapper {
             //println!("{:?}", registers_status);
         }
 
-        // Each I/O register has it's own read/write permissions.
+        // Map I/O registers to their documented permissions.
         let registers = self.ppu_ctrl_registers();
         match addr {
             0 => (registers, addr, false, true),
@@ -119,6 +136,27 @@ pub trait MemoryMapper {
             6 => (registers, addr, false, true), // Twice
             7 => (registers, addr, true, true),
             _ => (registers, addr, true, true),
+        }
+    }
+
+    /// Handles read / write behavior of individual misc registers and tracks
+    /// their dirty state.
+    fn map_misc_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+        {
+            // Set the dirty status of the mapped misc register.
+            let registers_status = self.misc_ctrl_registers_status();
+            registers_status[addr] = match operation {
+                MemoryOperation::Read  => MiscRegisterStatus::Read,
+                MemoryOperation::Write => MiscRegisterStatus::Written,
+                MemoryOperation::Nop   => registers_status[addr],
+            };
+        }
+
+        // Map I/O registers to their documented permissions.
+        let registers = self.misc_ctrl_registers();
+        match addr { // NOTE: Double-check permissions on these I/O registers.
+            0x14 => (registers, addr, false, true),
+            _    => (registers, addr, true, true),
         }
     }
 }
@@ -283,14 +321,19 @@ pub struct NROMMapper {
     // with the PPU.
     ppu_ctrl_registers: [u8; PPU_CTRL_REGISTERS_SIZE],
 
-    // Current read/write status of all PPU registers stored in memory.
+    // Current read / write status of all PPU registers stored in memory.
     ppu_ctrl_registers_status: [PPURegisterStatus; PPU_CTRL_REGISTERS_SIZE],
 
-    // TODO: Add ring buffer for double write registers.
+    //
+    // TODO: Add ring buffer for double write register values.
+    //
 
     // Contains NES APU and I/O registers. Also allows use of APU and I/O
     // functionality that is normally disabled.
     misc_ctrl_registers: [u8; MISC_CTRL_REGISTERS_SIZE],
+
+    // Current read / write status of all misc registers stored in memory.
+    misc_ctrl_registers_status: [MiscRegisterStatus; MISC_CTRL_REGISTERS_SIZE],
 
     expansion_rom: [u8; EXPANSION_ROM_SIZE],
     sram: [u8; SRAM_SIZE],
@@ -311,6 +354,16 @@ impl MemoryMapper for NROMMapper {
         &mut self.ppu_ctrl_registers_status
     }
 
+    /// Returns a slice of misc registers.
+    fn misc_ctrl_registers(&mut self) -> &mut [u8] {
+        &mut self.misc_ctrl_registers
+    }
+
+    /// Returns a slice of each misc register's status.
+    fn misc_ctrl_registers_status(&mut self) -> &mut [MiscRegisterStatus] {
+        &mut self.misc_ctrl_registers_status
+    }
+
     /// Maps a given virtual address to a physical address internal to the
     /// emulator. Returns a memory buffer and index for physical memory access.
     ///
@@ -327,7 +380,7 @@ impl MemoryMapper for NROMMapper {
             PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
                 self.map_ppu_registers((addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE, operation),
             MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
-                (&mut self.misc_ctrl_registers, addr - MISC_CTRL_REGISTERS_START, true, true),
+                self.map_misc_registers(addr - MISC_CTRL_REGISTERS_START, operation),
             EXPANSION_ROM_START...EXPANSION_ROM_END =>
                 (&mut self.expansion_rom, addr - EXPANSION_ROM_START, true, false),
             SRAM_START...SRAM_END =>
@@ -348,6 +401,7 @@ impl Memory for NROMMapper {
             ppu_ctrl_registers: [0; PPU_CTRL_REGISTERS_SIZE],
             ppu_ctrl_registers_status: [PPURegisterStatus::Untouched; PPU_CTRL_REGISTERS_SIZE],
             misc_ctrl_registers: [0; MISC_CTRL_REGISTERS_SIZE],
+            misc_ctrl_registers_status: [MiscRegisterStatus::Untouched; MISC_CTRL_REGISTERS_SIZE],
             expansion_rom: [0; EXPANSION_ROM_SIZE],
             sram: [0; SRAM_SIZE],
             prg_rom_1: [0; PRG_ROM_SIZE],
