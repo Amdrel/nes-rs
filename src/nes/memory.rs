@@ -88,17 +88,22 @@ pub trait MemoryMapper {
             //
             // In the event that the PPU register has already been written to
             // and is being written to again, set the status to WrittenTwice.
+            //
+            // NOTE: Reads may be set via the CPU logging mechanism used when
+            // verbose mode is active when the instruction itself did not
+            // actually read the value. This hopefully should not affect the
+            // accuracy of the CPU -> PPU interop, though this is an unknown for
+            // me right now.
             let registers_status = self.ppu_ctrl_registers_status();
-            if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
-                registers_status[addr] = PPURegisterStatus::WrittenTwice;
+            registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
+                 PPURegisterStatus::WrittenTwice
             } else {
-                registers_status[addr] = match operation {
+                match operation {
                     MemoryOperation::Read  => PPURegisterStatus::Read,
                     MemoryOperation::Write => PPURegisterStatus::Written,
                     MemoryOperation::Nop   => registers_status[addr],
-                };
+                }
             }
-
             //println!("{:?}", registers_status);
         }
 

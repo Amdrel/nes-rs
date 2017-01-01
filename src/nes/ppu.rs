@@ -62,6 +62,7 @@ pub struct PPU {
 }
 
 impl PPU {
+    /// Initializes the PPU and it's internal memory.
     pub fn new(runtime_options: NESRuntimeOptions) -> Self {
         PPU {
             runtime_options: runtime_options,
@@ -102,6 +103,9 @@ impl PPU {
     fn write_u8(&mut self, addr: usize, value: u8) {
         let (bank, addr) = self.map(addr);
         bank[addr] = value;
+    }
+
+    fn exec_dma(&mut self) {
     }
 
     pub fn execute<M: Memory>(&mut self, memory: &mut M) {
