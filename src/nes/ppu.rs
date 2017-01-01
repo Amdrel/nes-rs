@@ -12,6 +12,10 @@ use nes::memory::MiscRegisterStatus;
 use nes::memory::PPURegisterStatus;
 use nes::nes::NESRuntimeOptions;
 
+use nes::memory::{
+    MISC_CTRL_REGISTERS_SIZE,
+};
+
 const SPR_RAM_SIZE: usize = 0x00FF;
 
 // Memory map section sizes.
@@ -111,6 +115,17 @@ impl PPU {
     fn exec_dma(&mut self) {
     }
 
+    /// Reads the contents of the DMA register and executes DMA if written since
+    /// the last PPU cycle.
+    fn handle_dma_register<M: Memory>(&mut self, index: usize, state: MiscRegisterStatus, memory: &mut M) {
+        if state != MiscRegisterStatus::Written {
+            return;
+        }
+        let register = memory.misc_ctrl_registers()[index];
+        println!("{}", register);
+        panic!("Implement DMA to continue!");
+    }
+
     /// Checks the status of PPU I/O registers and executes PPU functionality
     /// depending on their states.
     fn check_ppu_registers<M: Memory>(&mut self, memory: &mut M) {
@@ -123,9 +138,16 @@ impl PPU {
     /// Checks the status of misc I/O registers and executes PPU functionality
     /// depending on their states.
     fn check_misc_registers<M: Memory>(&mut self, memory: &mut M) {
-        let io_registers_state = memory.misc_ctrl_registers_status();
+        let mut io_registers_state = [MiscRegisterStatus::Untouched; MISC_CTRL_REGISTERS_SIZE];
+        io_registers_state.clone_from_slice(memory.misc_ctrl_registers_status());
+
         for (index, state) in io_registers_state.iter().enumerate() {
             println!("MISC REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
+
+            match index {
+                0x14 => self.handle_dma_register(index, state.clone(), memory),
+                _    => {},
+            };
         }
     }
 
