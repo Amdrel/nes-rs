@@ -92,12 +92,19 @@ impl PPU {
         }
     }
 
-    pub fn execute<M: Memory>(&mut self, memory: &mut M) {
-        {
-            let (bank, addr) = self.map(NAME_TABLES_START-1);
-            println!("{:04X}", addr);
-        }
+    /// Reads a byte from PPU memory at the given virtual address.
+    fn read_u8(&mut self, addr: usize) -> u8 {
+        let (bank, addr) = self.map(addr);
+        bank[addr]
+    }
 
+    /// Writes a byte to PPU memory at the given virtual address.
+    fn write_u8(&mut self, addr: usize, value: u8) {
+        let (bank, addr) = self.map(addr);
+        bank[addr] = value;
+    }
+
+    pub fn execute<M: Memory>(&mut self, memory: &mut M) {
         log::log("ppu", "PPU cycle complete", &self.runtime_options);
     }
 }
