@@ -13,6 +13,7 @@ use nes::memory::PPURegisterStatus;
 use nes::nes::NESRuntimeOptions;
 
 use nes::memory::{
+    PPU_CTRL_REGISTERS_SIZE,
     MISC_CTRL_REGISTERS_SIZE,
 };
 
@@ -41,6 +42,10 @@ const MIRROR_END:               usize = 0xFFFF;
 /// hardware is responsible for drawing graphics to the television the console
 /// is hooked up to; however in our case we draw to an SDL surface.
 pub struct PPU {
+    ppu_ctrl: u8,
+    ppu_mask: u8,
+    ppu_status: u8,
+
     // The runtime options contain some useful information such as television
     // standard which affect the clock rate of the PPU.
     runtime_options: NESRuntimeOptions,
@@ -71,6 +76,10 @@ impl PPU {
     /// Initializes the PPU and it's internal memory.
     pub fn new(runtime_options: NESRuntimeOptions) -> Self {
         PPU {
+            ppu_ctrl: 0,
+            ppu_mask: 0,
+            ppu_status: 0,
+
             runtime_options: runtime_options,
             pattern_tables: [0; PATTERN_TABLES_SIZE],
             name_tables: [0; NAME_TABLES_SIZE],
@@ -122,16 +131,35 @@ impl PPU {
             return;
         }
         let register = memory.misc_ctrl_registers()[index];
-        println!("{}", register);
+        println!("{:02X}", register);
         panic!("Implement DMA to continue!");
+    }
+
+    fn handle_ppu_ctrl<M: Memory>(&mut self, index: usize, state: PPURegisterStatus, memory: &mut M) {
+        if state != PPURegisterStatus::Written {
+            return;
+        }
+        let register = memory.ppu_ctrl_registers()[index];
+        println!("{:02X}", register);
+        panic!("Implement PPU CTRL to continue!");
     }
 
     /// Checks the status of PPU I/O registers and executes PPU functionality
     /// depending on their states.
     fn check_ppu_registers<M: Memory>(&mut self, memory: &mut M) {
-        let io_registers_state = memory.ppu_ctrl_registers_status();
+        let mut io_registers_state = [PPURegisterStatus::Untouched; PPU_CTRL_REGISTERS_SIZE];
+        io_registers_state.clone_from_slice(memory.ppu_ctrl_registers_status());
+
         for (index, state) in io_registers_state.iter().enumerate() {
             println!("PPU REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
+            match index {
+                0x00 => self.handle_ppu_ctrl(index, state.clone(), memory),
+                _ => {
+                    if state.clone() != PPURegisterStatus::Untouched {
+                        panic!("Unsupported register modified");
+                    }
+                },
+            }
         }
     }
 
@@ -143,10 +171,13 @@ impl PPU {
 
         for (index, state) in io_registers_state.iter().enumerate() {
             println!("MISC REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
-
             match index {
                 0x14 => self.handle_dma_register(index, state.clone(), memory),
-                _    => {},
+                _ => {
+                    if state.clone() != MiscRegisterStatus::Untouched {
+                        panic!("Unsupported register modified");
+                    }
+                },
             };
         }
     }
