@@ -38,6 +38,17 @@ const PALETTES_MIRROR_END:      usize = 0x3FFF;
 const MIRROR_START:             usize = 0x4000;
 const MIRROR_END:               usize = 0xFFFF;
 
+// Relative addresses of I/O registers handled by the PPU.
+const PPUCTRL:    usize = 0x00;
+const PPUMASK:    usize = 0x01;
+const PPUSTATUS:  usize = 0x02;
+const OAMADDR:    usize = 0x03;
+const OAMDATA:    usize = 0x04;
+const PPUSCROLL:  usize = 0x05;
+const PPUADDR:    usize = 0x06;
+const PPUDATA:    usize = 0x07;
+const OAMDMA:     usize = 0x14;
+
 /// This is an implementation of the 2C02 PPU used in the NES. This piece of
 /// hardware is responsible for drawing graphics to the television the console
 /// is hooked up to; however in our case we draw to an SDL surface.
@@ -121,7 +132,9 @@ impl PPU {
     }
 
     /// Copy data from main memory to the PPU's internal sprite memory.
-    fn exec_dma(&mut self) {
+    fn exec_dma(&mut self, register: u8) {
+        println!("{:02X}", register);
+        panic!("DMA unimplemented");
     }
 
     /// Reads the contents of the DMA register and executes DMA if written since
@@ -133,8 +146,7 @@ impl PPU {
             return;
         }
         let register = memory.misc_ctrl_registers()[index];
-        println!("{:02X}", register);
-        panic!("Implement DMA to continue!");
+        self.exec_dma(register);
     }
 
     /// Updates the internal PPUCTRL register when the I/O register was written
@@ -165,8 +177,8 @@ impl PPU {
 
         for (index, state) in io_registers_state.iter().enumerate() {
             match index {
-                0x00 => self.handle_ppu_ctrl(index, state.clone(), memory),
-                0x01 => self.handle_ppu_mask(index, state.clone(), memory),
+                PPUCTRL => self.handle_ppu_ctrl(index, state.clone(), memory),
+                PPUMASK => self.handle_ppu_mask(index, state.clone(), memory),
                 _ => {
                     if state.clone() != PPURegisterStatus::Untouched {
                         panic!("Unsupported ppu register touched: 0x{:02X}", index);
@@ -184,8 +196,10 @@ impl PPU {
 
         for (index, state) in io_registers_state.iter().enumerate() {
             match index {
-                0x14 => self.handle_dma_register(index, state.clone(), memory),
+                OAMDMA => self.handle_dma_register(index, state.clone(), memory),
                 _ => {
+                    // FIXME: PPU does not need to handle all misc I/O
+                    // registers. Remove this panic later.
                     if state.clone() != MiscRegisterStatus::Untouched {
                         panic!("Unsupported misc register touched: 0x{:02X}", index);
                     }
