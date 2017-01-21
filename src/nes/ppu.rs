@@ -164,13 +164,12 @@ impl PPU {
         io_registers_state.clone_from_slice(memory.ppu_ctrl_registers_status());
 
         for (index, state) in io_registers_state.iter().enumerate() {
-            println!("PPU REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
             match index {
                 0x00 => self.handle_ppu_ctrl(index, state.clone(), memory),
                 0x01 => self.handle_ppu_mask(index, state.clone(), memory),
                 _ => {
                     if state.clone() != PPURegisterStatus::Untouched {
-                        panic!("Unsupported register modified");
+                        panic!("Unsupported ppu register touched: 0x{:02X}", index);
                     }
                 },
             }
@@ -184,12 +183,11 @@ impl PPU {
         io_registers_state.clone_from_slice(memory.misc_ctrl_registers_status());
 
         for (index, state) in io_registers_state.iter().enumerate() {
-            println!("MISC REGISTERS :: index: 0x{:02X}, state: {:?}", index, state);
             match index {
                 0x14 => self.handle_dma_register(index, state.clone(), memory),
                 _ => {
                     if state.clone() != MiscRegisterStatus::Untouched {
-                        panic!("Unsupported register modified");
+                        panic!("Unsupported misc register touched: 0x{:02X}", index);
                     }
                 },
             };
@@ -201,8 +199,6 @@ impl PPU {
     pub fn execute<M: Memory>(&mut self, memory: &mut M) -> u16 {
         self.check_ppu_registers(memory);
         self.check_misc_registers(memory);
-
-        log::log("ppu", "PPU cycle complete", &self.runtime_options);
         0
     }
 }
