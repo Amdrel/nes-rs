@@ -49,12 +49,27 @@ const PPUADDR:    usize = 0x06;
 const PPUDATA:    usize = 0x07;
 const OAMDMA:     usize = 0x14;
 
+// Initial register values set at startup.
+const INITIAL_PPUCTRL:   u8 = 0b00000000;
+const INITIAL_PPUMASK:   u8 = 0b00000000;
+const INITIAL_PPUSTATUS: u8 = 0b10100000;
+
 /// This is an implementation of the 2C02 PPU used in the NES. This piece of
 /// hardware is responsible for drawing graphics to the television the console
 /// is hooked up to; however in our case we draw to an SDL surface.
+///
+/// Some comments pertaining to PPU functionality are courtesy of
+/// wiki.nesdev.com.
 pub struct PPU {
+    // Contains various flags used for controlling PPU operation.
     ppu_ctrl: u8,
+
+    // This register controls the rendering of sprites and backgrounds, as well
+    // as color effects.
     ppu_mask: u8,
+
+    // This register reflects the state of various functions inside the PPU. It
+    // is often used for determining timing.
     ppu_status: u8,
 
     // The runtime options contain some useful information such as television
@@ -87,9 +102,9 @@ impl PPU {
     /// Initializes the PPU and it's internal memory.
     pub fn new(runtime_options: NESRuntimeOptions) -> Self {
         PPU {
-            ppu_ctrl: 0,
-            ppu_mask: 0,
-            ppu_status: 0,
+            ppu_ctrl: INITIAL_PPUCTRL,
+            ppu_mask: INITIAL_PPUMASK,
+            ppu_status: INITIAL_PPUSTATUS,
 
             runtime_options: runtime_options,
             pattern_tables: [0; PATTERN_TABLES_SIZE],
