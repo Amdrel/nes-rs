@@ -17,9 +17,7 @@ mod utils;
 
 use getopts::Options;
 use io::binutils::INESHeader;
-use io::binutils::Mapper::*;
 use io::errors::*;
-use nes::memory::Memory;
 use nes::nes::NES;
 use nes::nes::NESRuntimeOptions;
 use std::env;

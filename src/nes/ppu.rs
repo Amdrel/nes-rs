@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::log;
 use nes::memory::Memory;
 use nes::memory::MiscRegisterStatus;
 use nes::memory::PPURegisterStatus;
@@ -53,6 +52,7 @@ const OAMDMA:     usize = 0x14;
 const INITIAL_PPUCTRL:   u8 = 0b00000000;
 const INITIAL_PPUMASK:   u8 = 0b00000000;
 const INITIAL_PPUSTATUS: u8 = 0b10100000;
+const INITIAL_OAMADDR:   u8 = 0b00000000;
 
 /// This is an implementation of the 2C02 PPU used in the NES. This piece of
 /// hardware is responsible for drawing graphics to the television the console
@@ -71,6 +71,9 @@ pub struct PPU {
     // This register reflects the state of various functions inside the PPU. It
     // is often used for determining timing.
     ppu_status: u8,
+
+    // Address where OAM starts.
+    oam_address: u8,
 
     // The runtime options contain some useful information such as television
     // standard which affect the clock rate of the PPU.
@@ -105,6 +108,7 @@ impl PPU {
             ppu_ctrl: INITIAL_PPUCTRL,
             ppu_mask: INITIAL_PPUMASK,
             ppu_status: INITIAL_PPUSTATUS,
+            oam_address: INITIAL_OAMADDR,
             runtime_options: runtime_options,
             pattern_tables: [0; PATTERN_TABLES_SIZE],
             name_tables: [0; NAME_TABLES_SIZE],
@@ -186,8 +190,15 @@ impl PPU {
         memory.ppu_ctrl_registers_status[index] = PPURegisterStatus::Untouched;
     }
 
-    //fn handle_ppu_status(&mut self, index: usize, state: PPURegisterStatus, memory: &mut Memory) {
-    //}
+    /// Updates the internal OAMADDR registers with data in the I/O register.
+    fn handle_oam_addr(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
+        if state != PPURegisterStatus::Written {
+            return;
+        }
+        self.oam_address = memory.ppu_ctrl_registers[index];
+        memory.ppu_ctrl_registers_status[index] = PPURegisterStatus::Untouched;
+    }
 
     /// Checks the status of PPU I/O registers and executes PPU functionality
     /// depending on their states.
@@ -196,7 +207,9 @@ impl PPU {
             match index {
                 PPUCTRL   => self.handle_ppu_ctrl(index, memory),
                 PPUMASK   => self.handle_ppu_mask(index, memory),
-                //PPUSTATUS => self.handle_ppu_status(index, state.clone(), memory),
+                PPUSTATUS => {},
+                OAMADDR   => self.handle_oam_addr(index, memory),
+
                 _ => {
                     if memory.ppu_ctrl_registers_status[index] != PPURegisterStatus::Untouched {
                         panic!("Unsupported ppu register touched: 0x{:02X}", index);
@@ -212,9 +225,10 @@ impl PPU {
         for index in 0x0..0x20 {
             match index {
                 OAMDMA => self.handle_dma_register(index, memory),
+
+                // FIXME: PPU does not need to handle all misc I/O
+                // registers. Remove this panic later.
                 _ => {
-                    // FIXME: PPU does not need to handle all misc I/O
-                    // registers. Remove this panic later.
                     if memory.misc_ctrl_registers_status[index] != MiscRegisterStatus::Untouched {
                         panic!("Unsupported misc register touched: 0x{:02X}", index);
                     }
@@ -225,7 +239,7 @@ impl PPU {
 
     /// Executes routine PPU logic and returns stolen cycles from operations
     /// such as DMA transfers if the PPU hogged the main memory bus.
-    pub fn execute(&mut self, memory: &mut Memory) -> u16 {
+    pub fn step(&mut self, memory: &mut Memory) -> u16 {
         self.check_ppu_registers(memory);
         self.check_misc_registers(memory);
         0

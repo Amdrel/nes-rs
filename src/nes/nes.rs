@@ -123,15 +123,20 @@ impl NES {
         // Start cycling the CPU and PPU and add a panic catcher so crash
         // information can be shown if the CPU panics.
         //
-        // The PPU cycles every 3 CPU cycles, though there may need to be
-        // changes made for PAL (currently assumes NTSC PPU clock speed).
+        // The PPU ticks three times every CPU cycle, though there may need to
+        // be changes made for PAL (currently assumes NTSC PPU clock speed).
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            let mut cycles: u16 = 0;
             loop {
-                cycles += self.cpu.execute(&mut self.memory);
-                while cycles >= 3 {
-                    self.ppu.execute(&mut self.memory);
-                    cycles -= 3;
+                let mut cycles = self.cpu.step(&mut self.memory);
+                self.cpu.sleep(cycles);
+
+                // Execute PPU ticks that should have happened while the CPU
+                // slept. NOTE: Can we make this concurrent?
+                while cycles > 0 {
+                    for _ in 0..3 { // *Should* unroll.
+                        self.ppu.step(&mut self.memory);
+                    }
+                    cycles -= 1;
                 }
             }
         }));

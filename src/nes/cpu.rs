@@ -327,9 +327,15 @@ impl CPU {
         self.execution_log = Some(log);
     }
 
+    /// Sleeps the CPU for an amount of time corresponding to the passed cycles.
+    /// Time is determined by multiplying the cycles by the clock speed.
+    pub fn sleep(&mut self, cycles: u16) {
+        thread::sleep(Duration::new(0, (CLOCK_SPEED * cycles as f32) as u32));
+    }
+
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
-    pub fn execute(&mut self, memory: &mut Memory) -> u16 {
+    pub fn step(&mut self, memory: &mut Memory) -> u16 {
         let instr = Instruction::parse(self.pc as usize, memory);
         if self.runtime_options.verbose || self.execution_log.is_some() {
             let raw_fragment = instr.log(self, memory);
@@ -361,17 +367,9 @@ impl CPU {
         instr.execute(self, memory);
 
         // Save the cycle count of the last instruction execution so it may be
-        // returned after sleeping through the cycles.
+        // returned after sleeping through the cycles, then reset the cycles and
+        // PPU dots before returning.
         let old_cycles = self.cycles;
-
-        // The instruction execution should have updated the remaining cycle count in the CPU.
-        // Sleep for the clock speed multiplied by the cycle cound.
-        //
-        // NOTE: When interrupts are implemented, this may have to be changed as some interrupts
-        // are delayed by n number of cycles.
-        thread::sleep(Duration::new(0, (CLOCK_SPEED * self.cycles as f32) as u32));
-
-        // Reset cycles and set PPU dots for debugging purposes.
         self.ppu_dots = (self.ppu_dots + (self.cycles * 3)) % 341;
         self.cycles = 0;
 
