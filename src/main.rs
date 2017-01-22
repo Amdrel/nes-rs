@@ -19,7 +19,7 @@ use getopts::Options;
 use io::binutils::INESHeader;
 use io::binutils::Mapper::*;
 use io::errors::*;
-use nes::memory::NROMMapper;
+use nes::memory::Memory;
 use nes::nes::NES;
 use nes::nes::NESRuntimeOptions;
 use std::env;
@@ -144,12 +144,8 @@ fn init() -> i32 {
         verbose: matches.opt_present("verbose"),
         program_counter: program_counter,
     };
-    match header.mapper() {
-        NROM => {
-            let mut nes: NES<NROMMapper> = NES::new(rom, header, runtime_options);
-            nes.run()
-        }
-    }
+    let mut nes = NES::new(rom, header, runtime_options);
+    nes.run()
 }
 
 /// Entry point of the program and wrapper of init. Takes the exit code returned

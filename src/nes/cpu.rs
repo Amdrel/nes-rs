@@ -329,7 +329,7 @@ impl CPU {
 
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
-    pub fn execute<M: Memory>(&mut self, memory: &mut M) -> u16 {
+    pub fn execute(&mut self, memory: &mut Memory) -> u16 {
         let instr = Instruction::parse(self.pc as usize, memory);
         if self.runtime_options.verbose || self.execution_log.is_some() {
             let raw_fragment = instr.log(self, memory);

@@ -28,15 +28,15 @@ use nes::memory::{
 
 /// The NES struct owns all hardware peripherals and lends them when needed. The
 /// runtime cost of this should be removed with optimized builds (untested).
-pub struct NES<M: Memory> {
+pub struct NES {
     pub header: INESHeader,
     pub runtime_options: NESRuntimeOptions,
     pub cpu: CPU,
     pub ppu: PPU,
-    pub memory: M,
+    pub memory: Memory,
 }
 
-impl<M: Memory> NES<M> {
+impl NES {
     /// Initializes the NES emulator by dumping the ROM into memory and
     /// initializing the initial hardware state.
     pub fn new(rom: Vec<u8>, header: INESHeader, runtime_options: NESRuntimeOptions) -> Self {
@@ -51,7 +51,7 @@ impl<M: Memory> NES<M> {
         // Copy the trainer data to 0x7000 if it exists and adjust the cursor
         // size to accommodate. Trainer data will offset the location of ROM
         // data in the INES ROM file.
-        let mut memory = M::new();
+        let mut memory = Memory::new();
         if header.has_trainer() {
             log::log("init", "Trainer data found", &runtime_options);
             memory.memdump(TRAINER_START, &rom[0x10..0x210]);

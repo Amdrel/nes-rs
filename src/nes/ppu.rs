@@ -105,7 +105,6 @@ impl PPU {
             ppu_ctrl: INITIAL_PPUCTRL,
             ppu_mask: INITIAL_PPUMASK,
             ppu_status: INITIAL_PPUSTATUS,
-
             runtime_options: runtime_options,
             pattern_tables: [0; PATTERN_TABLES_SIZE],
             name_tables: [0; NAME_TABLES_SIZE],
@@ -156,46 +155,50 @@ impl PPU {
     /// the last PPU cycle.
     ///
     /// TODO: Implement me!
-    fn handle_dma_register<M: Memory>(&mut self, index: usize, state: MiscRegisterStatus, memory: &mut M) {
+    fn handle_dma_register(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.misc_ctrl_registers_status[index];
         if state != MiscRegisterStatus::Written {
             return;
         }
-        let register = memory.misc_ctrl_registers()[index];
+        let register = memory.misc_ctrl_registers[index];
         self.exec_dma(register);
     }
 
     /// Updates the internal PPUCTRL register when the I/O register was written
     /// since the last PPU cycle.
-    fn handle_ppu_ctrl<M: Memory>(&mut self, index: usize, state: PPURegisterStatus, memory: &mut M) {
+    fn handle_ppu_ctrl(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
         if state != PPURegisterStatus::Written {
             return;
         }
-        self.ppu_ctrl = memory.ppu_ctrl_registers()[index];
-        memory.ppu_ctrl_registers_status()[index] = PPURegisterStatus::Untouched;
+        self.ppu_ctrl = memory.ppu_ctrl_registers[index];
+        memory.ppu_ctrl_registers_status[index] = PPURegisterStatus::Untouched;
     }
 
     /// Updates the internal PPUMASK register when the I/O register was written
     /// since the last PPU cycle.
-    fn handle_ppu_mask<M: Memory>(&mut self, index: usize, state: PPURegisterStatus, memory: &mut M) {
+    fn handle_ppu_mask(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
         if state != PPURegisterStatus::Written {
             return;
         }
-        self.ppu_mask = memory.ppu_ctrl_registers()[index];
-        memory.ppu_ctrl_registers_status()[index] = PPURegisterStatus::Untouched;
+        self.ppu_mask = memory.ppu_ctrl_registers[index];
+        memory.ppu_ctrl_registers_status[index] = PPURegisterStatus::Untouched;
     }
+
+    //fn handle_ppu_status(&mut self, index: usize, state: PPURegisterStatus, memory: &mut Memory) {
+    //}
 
     /// Checks the status of PPU I/O registers and executes PPU functionality
     /// depending on their states.
-    fn check_ppu_registers<M: Memory>(&mut self, memory: &mut M) {
-        let mut io_registers_state = [PPURegisterStatus::Untouched; PPU_CTRL_REGISTERS_SIZE];
-        io_registers_state.clone_from_slice(memory.ppu_ctrl_registers_status());
-
-        for (index, state) in io_registers_state.iter().enumerate() {
+    fn check_ppu_registers(&mut self, memory: &mut Memory) {
+        for index in 0x0..0x8 {
             match index {
-                PPUCTRL => self.handle_ppu_ctrl(index, state.clone(), memory),
-                PPUMASK => self.handle_ppu_mask(index, state.clone(), memory),
+                PPUCTRL   => self.handle_ppu_ctrl(index, memory),
+                PPUMASK   => self.handle_ppu_mask(index, memory),
+                //PPUSTATUS => self.handle_ppu_status(index, state.clone(), memory),
                 _ => {
-                    if state.clone() != PPURegisterStatus::Untouched {
+                    if memory.ppu_ctrl_registers_status[index] != PPURegisterStatus::Untouched {
                         panic!("Unsupported ppu register touched: 0x{:02X}", index);
                     }
                 },
@@ -205,17 +208,14 @@ impl PPU {
 
     /// Checks the status of misc I/O registers and executes PPU functionality
     /// depending on their states.
-    fn check_misc_registers<M: Memory>(&mut self, memory: &mut M) {
-        let mut io_registers_state = [MiscRegisterStatus::Untouched; MISC_CTRL_REGISTERS_SIZE];
-        io_registers_state.clone_from_slice(memory.misc_ctrl_registers_status());
-
-        for (index, state) in io_registers_state.iter().enumerate() {
+    fn check_misc_registers(&mut self, memory: &mut Memory) {
+        for index in 0x0..0x20 {
             match index {
-                OAMDMA => self.handle_dma_register(index, state.clone(), memory),
+                OAMDMA => self.handle_dma_register(index, memory),
                 _ => {
                     // FIXME: PPU does not need to handle all misc I/O
                     // registers. Remove this panic later.
-                    if state.clone() != MiscRegisterStatus::Untouched {
+                    if memory.misc_ctrl_registers_status[index] != MiscRegisterStatus::Untouched {
                         panic!("Unsupported misc register touched: 0x{:02X}", index);
                     }
                 },
@@ -225,7 +225,7 @@ impl PPU {
 
     /// Executes routine PPU logic and returns stolen cycles from operations
     /// such as DMA transfers if the PPU hogged the main memory bus.
-    pub fn execute<M: Memory>(&mut self, memory: &mut M) -> u16 {
+    pub fn execute(&mut self, memory: &mut Memory) -> u16 {
         self.check_ppu_registers(memory);
         self.check_misc_registers(memory);
         0
