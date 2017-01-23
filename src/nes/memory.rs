@@ -274,7 +274,9 @@ impl Memory {
     fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         {
             // Update the register status before mapping so the PPU knows which
-            // registers were touched after the memory operation.
+            // registers were touched after the memory operation. Reads to
+            // registers marked in any written state do not override the written
+            // flag for that register.
             //
             // In the event that the PPU register has already been written to
             // and is being written to again, set the status to WrittenTwice.
@@ -287,14 +289,15 @@ impl Memory {
             let registers_status = &mut self.ppu_ctrl_registers_status;
             registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
                  PPURegisterStatus::WrittenTwice
-            } else {
+            } else if registers_status[addr] != PPURegisterStatus::Written && registers_status[addr] != PPURegisterStatus::WrittenTwice {
                 match operation {
                     MemoryOperation::Read  => PPURegisterStatus::Read,
                     MemoryOperation::Write => PPURegisterStatus::Written,
                     MemoryOperation::Nop   => registers_status[addr],
                 }
-            }
-            //println!("{:?}", registers_status);
+            } else {
+                registers_status[addr]
+            };
         }
 
         // Map I/O registers to their documented permissions.

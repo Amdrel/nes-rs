@@ -53,6 +53,11 @@ const INITIAL_PPUCTRL:   u8 = 0b00000000;
 const INITIAL_PPUMASK:   u8 = 0b00000000;
 const INITIAL_PPUSTATUS: u8 = 0b10100000;
 const INITIAL_OAMADDR:   u8 = 0b00000000;
+const INITIAL_OAMDATA:   u8 = 0b00000000;
+const INITIAL_PPUSCROLL: u8 = 0b00000000;
+const INITIAL_PPUADDR:   u8 = 0b00000000;
+const INITIAL_PPUDATA:   u8 = 0b00000000;
+const INITIAL_OAMDMA:    u8 = 0b00000000;
 
 /// This is an implementation of the 2C02 PPU used in the NES. This piece of
 /// hardware is responsible for drawing graphics to the television the console
@@ -74,6 +79,13 @@ pub struct PPU {
 
     // Address where OAM starts.
     oam_address: u8,
+
+    // Data to be written to the address of OAMADDR next tick.
+    oam_data: u8,
+
+    ppu_scroll: u8,
+    ppu_addr: u8,
+    ppu_data: u8,
 
     // The runtime options contain some useful information such as television
     // standard which affect the clock rate of the PPU.
@@ -109,6 +121,10 @@ impl PPU {
             ppu_mask: INITIAL_PPUMASK,
             ppu_status: INITIAL_PPUSTATUS,
             oam_address: INITIAL_OAMADDR,
+            oam_data: INITIAL_OAMDATA,
+            ppu_scroll: INITIAL_PPUSCROLL,
+            ppu_addr: INITIAL_PPUADDR,
+            ppu_data: INITIAL_PPUDATA,
             runtime_options: runtime_options,
             pattern_tables: [0; PATTERN_TABLES_SIZE],
             name_tables: [0; NAME_TABLES_SIZE],
@@ -150,6 +166,7 @@ impl PPU {
     }
 
     /// Copy data from main memory to the PPU's internal sprite memory.
+    /// TODO: Implement me!
     fn exec_dma(&mut self, register: u8) {
         println!("{:02X}", register);
         panic!("DMA unimplemented");
@@ -157,7 +174,6 @@ impl PPU {
 
     /// Reads the contents of the DMA register and executes DMA if written since
     /// the last PPU cycle.
-    ///
     /// TODO: Implement me!
     fn handle_dma_register(&mut self, index: usize, memory: &mut Memory) {
         let state = memory.misc_ctrl_registers_status[index];
@@ -170,9 +186,10 @@ impl PPU {
 
     /// Updates the internal PPUCTRL register when the I/O register was written
     /// since the last PPU cycle.
+    /// FIXME: Make accurate.
     fn handle_ppu_ctrl(&mut self, index: usize, memory: &mut Memory) {
         let state = memory.ppu_ctrl_registers_status[index];
-        if state != PPURegisterStatus::Written {
+        if state != PPURegisterStatus::Written || state != PPURegisterStatus::WrittenTwice {
             return;
         }
         self.ppu_ctrl = memory.ppu_ctrl_registers[index];
@@ -181,9 +198,10 @@ impl PPU {
 
     /// Updates the internal PPUMASK register when the I/O register was written
     /// since the last PPU cycle.
+    /// FIXME: Make accurate.
     fn handle_ppu_mask(&mut self, index: usize, memory: &mut Memory) {
         let state = memory.ppu_ctrl_registers_status[index];
-        if state != PPURegisterStatus::Written {
+        if state != PPURegisterStatus::Written || state != PPURegisterStatus::WrittenTwice {
             return;
         }
         self.ppu_mask = memory.ppu_ctrl_registers[index];
@@ -191,13 +209,57 @@ impl PPU {
     }
 
     /// Updates the internal OAMADDR registers with data in the I/O register.
+    /// FIXME: Make accurate.
     fn handle_oam_addr(&mut self, index: usize, memory: &mut Memory) {
         let state = memory.ppu_ctrl_registers_status[index];
-        if state != PPURegisterStatus::Written {
+        if state != PPURegisterStatus::Written || state != PPURegisterStatus::WrittenTwice {
             return;
         }
         self.oam_address = memory.ppu_ctrl_registers[index];
         memory.ppu_ctrl_registers_status[index] = PPURegisterStatus::Untouched;
+
+        panic!("Implement OAMADDR write handling");
+    }
+
+    /// Updates the internal OAMADDR registers with data in the I/O register.
+    /// FIXME: Make accurate.
+    fn handle_oam_data(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
+        if state != PPURegisterStatus::Written || state != PPURegisterStatus::WrittenTwice {
+            return;
+        }
+        self.oam_data = memory.ppu_ctrl_registers[index];
+        self.oam_address = self.oam_address.wrapping_add(1);
+        memory.ppu_ctrl_registers_status[index] = PPURegisterStatus::Untouched;
+
+        panic!("Implement OAMDATA write handling");
+    }
+
+    /// FIXME: Make accurate.
+    fn handle_ppu_scroll(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
+        if state != PPURegisterStatus::WrittenTwice {
+            return;
+        }
+        panic!("Implement PPUSCROLL write handling");
+    }
+
+    /// FIXME: Make accurate.
+    fn handle_ppu_address(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
+        if state != PPURegisterStatus::WrittenTwice {
+            return;
+        }
+        panic!("Implement PPUADDR write handling");
+    }
+
+    /// FIXME: Make accurate.
+    fn handle_ppu_data(&mut self, index: usize, memory: &mut Memory) {
+        let state = memory.ppu_ctrl_registers_status[index];
+        if state != PPURegisterStatus::Written || state != PPURegisterStatus::WrittenTwice {
+            return;
+        }
+        panic!("Implement PPUDATA write handling");
     }
 
     /// Checks the status of PPU I/O registers and executes PPU functionality
@@ -209,6 +271,10 @@ impl PPU {
                 PPUMASK   => self.handle_ppu_mask(index, memory),
                 PPUSTATUS => {},
                 OAMADDR   => self.handle_oam_addr(index, memory),
+                OAMDATA   => self.handle_oam_data(index, memory),
+                PPUSCROLL => self.handle_ppu_scroll(index, memory),
+                PPUADDR   => self.handle_ppu_address(index, memory),
+                PPUDATA   => self.handle_ppu_data(index, memory),
 
                 _ => {
                     if memory.ppu_ctrl_registers_status[index] != PPURegisterStatus::Untouched {
@@ -240,8 +306,10 @@ impl PPU {
     /// Executes routine PPU logic and returns stolen cycles from operations
     /// such as DMA transfers if the PPU hogged the main memory bus.
     pub fn step(&mut self, memory: &mut Memory) -> u16 {
+        // Check the dirty state of each of the I/O registers used by the PPU.
         self.check_ppu_registers(memory);
         self.check_misc_registers(memory);
-        0
+
+        0 // TODO: Throw in DMA cycles.
     }
 }
