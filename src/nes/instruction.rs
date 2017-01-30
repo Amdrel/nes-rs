@@ -1789,12 +1789,12 @@ impl Instruction {
             BRKImp => {
                 // Fires an IRQ interrupt.
                 let p = cpu.p;
-                let pc = cpu.pc;
+                let pc = cpu.pc.wrapping_add(len);
                 memory.stack_push_u16(cpu, pc);
                 memory.stack_push_u8(cpu, p);
                 cpu.set_break_command();
-                cpu.pc = memory.read_u16(0xFFFE);
                 cpu.cycles += 7;
+                cpu.pc = pc;
             },
             NOPImp => {
                 // This is the most difficult instruction to implement.
@@ -1968,6 +1968,8 @@ impl Instruction {
             },
             _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
         };
+
+        cpu.poll_irq(memory); // Poll IRQ after execution.
     }
 
     /// Obtain the opcode of the instruction.

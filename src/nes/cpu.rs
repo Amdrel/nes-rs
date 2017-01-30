@@ -134,6 +134,12 @@ pub struct CPU {
     // Number of cycles since last v-sync.
     pub ppu_dots: u16,
 
+    // IRQ is set whenever an IRQ is fired either through hardware or software.
+    // The CPU checks the IRQ state after the last cycle of any instruction
+    // (right before fetching the next opcode). If set, the IRQ handler is
+    // loaded into the program counter.
+    pub irq: bool,
+
     // Options passed from the command-line that may influence how the CPU
     // behaves.
     runtime_options: NESRuntimeOptions,
@@ -154,6 +160,7 @@ impl CPU {
             p: 0x24,
             cycles: 0,
             ppu_dots: 0,
+            irq: false,
             runtime_options: runtime_options,
             execution_log: None,
         }
@@ -187,6 +194,7 @@ impl CPU {
     /// Sets the break command flag in the status register.
     #[inline(always)]
     pub fn set_break_command(&mut self) {
+        self.irq = true;
         self.p |= BREAK_COMMAND;
     }
 
@@ -331,6 +339,15 @@ impl CPU {
     /// Time is determined by multiplying the cycles by the clock speed.
     pub fn sleep(&mut self, cycles: u16) {
         thread::sleep(Duration::new(0, (CLOCK_SPEED * cycles as f32) as u32));
+    }
+
+    /// Checks the IRQ status and sets the program counter to the IRQ handler if
+    /// set. IRQ can be triggered through hardware and the BRK instruction.
+    pub fn poll_irq(&mut self, memory: &mut Memory) {
+        if self.irq {
+            self.irq = false;
+            self.pc = memory.read_u16(0xFFFE);
+        }
     }
 
     /// Parse an instruction from memory at the address the program counter

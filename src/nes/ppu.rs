@@ -292,8 +292,8 @@ impl PPU {
             match index {
                 OAMDMA => self.handle_dma_register(index, memory),
 
-                // FIXME: PPU does not need to handle all misc I/O
-                // registers. Remove this panic later.
+                // FIXME: PPU does not need to handle all misc I/O registers.
+                // Remove this panic later.
                 _ => {
                     if memory.misc_ctrl_registers_status[index] != MiscRegisterStatus::Untouched {
                         panic!("Unsupported misc register touched: 0x{:02X}", index);

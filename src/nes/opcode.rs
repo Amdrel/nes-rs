@@ -209,7 +209,7 @@ pub fn opcode_len(opcode: &Opcode) -> u8 {
         BMIRel   => 2,
         BNERel   => 2,
         BPLRel   => 2,
-        BRKImp   => 1,
+        BRKImp   => 2,
         BVCRel   => 2,
         BVSRel   => 2,
         CLCImp   => 1,
