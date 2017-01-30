@@ -149,6 +149,13 @@ impl Memory {
         }
     }
 
+    /// Reads an unsigned 8-bit byte value located at the given virtual address.
+    #[inline(always)]
+    pub fn read_u8_unrestricted(&mut self, addr: usize) -> u8 {
+        let (bank, idx, _, _) = self.map(addr, MemoryOperation::Nop);
+        bank[idx]
+    }
+
     /// Writes an unsigned 8-bit byte value to the given virtual address.
     #[inline(always)]
     pub fn write_u8_unrestricted(&mut self, addr: usize, val: u8) {

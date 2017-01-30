@@ -2173,6 +2173,69 @@ impl Instruction {
         memory.read_u8(addr)
     }
 
+    /// Dereferences a zero page address.
+    #[inline(always)]
+    fn dereference_zero_page_unrestricted(&self, memory: &mut Memory) -> u8 {
+        let addr = self.zero_page();
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences a zero page x address.
+    #[inline(always)]
+    fn dereference_zero_page_x_unrestricted(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.zero_page_x(cpu);
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences a zero page y address.
+    #[inline(always)]
+    fn dereference_zero_page_y_unrestricted(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.zero_page_y(cpu);
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences an absolute address.
+    #[inline(always)]
+    fn dereference_absolute_unrestricted(&self, memory: &mut Memory) -> u8 {
+        let addr = self.absolute();
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences an absolute x address.
+    #[inline(always)]
+    fn dereference_absolute_x_unrestricted(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.absolute_x(cpu).0;
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences an absolute y address.
+    #[inline(always)]
+    fn dereference_absolute_y_unrestricted(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.absolute_y(cpu).0;
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences an indirect address.
+    #[inline(always)]
+    fn dereference_indirect_unrestricted(&self, memory: &mut Memory) -> u8 {
+        let addr = self.indirect(memory);
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences an indirect x address.
+    #[inline(always)]
+    fn dereference_indirect_x_unrestricted(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.indirect_x(cpu, memory).0;
+        memory.read_u8_unrestricted(addr)
+    }
+
+    /// Dereferences an indirect y address.
+    #[inline(always)]
+    fn dereference_indirect_y_unrestricted(&self, memory: &mut Memory, cpu: &CPU) -> u8 {
+        let addr = self.indirect_y(cpu, memory).0;
+        memory.read_u8_unrestricted(addr)
+    }
+
     // Functions for aiding in disassembly. Each addressing mode has it's own
     // disassembly format in Nintendulator logs. These functions simply fill in
     // the blanks with provided parameters.
@@ -2194,19 +2257,19 @@ impl Instruction {
 
     /// Disassembles the instruction as if it's using zero page addressing.
     fn disassemble_zero_page(&self, instr: &str, memory: &mut Memory) -> String {
-        format!("{} ${:02X} = {:02X}", instr, self.1, self.dereference_zero_page(memory))
+        format!("{} ${:02X} = {:02X}", instr, self.1, self.dereference_zero_page_unrestricted(memory))
     }
 
     /// Disassembles the instruction as if it's using zero page x addressing.
     fn disassemble_zero_page_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} ${:02X},X @ {:02X} = {:02X}", instr, self.1, self.zero_page_x(cpu),
-            self.dereference_zero_page_x(memory, cpu))
+            self.dereference_zero_page_x_unrestricted(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using zero page y addressing.
     fn disassemble_zero_page_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} ${:02X},Y @ {:02X} = {:02X}", instr, self.1, self.zero_page_y(cpu),
-            self.dereference_zero_page_y(memory, cpu))
+            self.dereference_zero_page_y_unrestricted(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using relative addressing.
@@ -2226,19 +2289,19 @@ impl Instruction {
 
     /// Disassembles the instruction as if it's using absolute addressing.
     fn disassemble_absolute(&self, instr: &str, memory: &mut Memory) -> String {
-        format!("{} ${:02X}{:02X} = {:02X}", instr, self.2, self.1, self.dereference_absolute(memory))
+        format!("{} ${:02X}{:02X} = {:02X}", instr, self.2, self.1, self.dereference_absolute_unrestricted(memory))
     }
 
     /// Disassembles the instruction as if it's using absolute x addressing.
     fn disassemble_absolute_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} ${:02x}{:02X},X @ {:04X} = {:02X}", instr, self.2, self.1,
-            self.absolute_x(cpu).0, self.dereference_absolute_x(memory, cpu))
+            self.absolute_x(cpu).0, self.dereference_absolute_x_unrestricted(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using absolute y addressing.
     fn disassemble_absolute_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} ${:02X}{:02X},Y @ {:04X} = {:02X}", instr, self.2, self.1,
-            self.absolute_y(cpu).0, self.dereference_absolute_y(memory, cpu))
+            self.absolute_y(cpu).0, self.dereference_absolute_y_unrestricted(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using indirect addressing.
@@ -2250,13 +2313,13 @@ impl Instruction {
     fn disassemble_indirect_x(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} (${:02X},X) @ {:02X} = {:04X} = {:02X}", instr, self.1,
             self.1.wrapping_add(cpu.x), self.indirect_x(cpu, memory).0,
-            self.dereference_indirect_x(memory, cpu))
+            self.dereference_indirect_x_unrestricted(memory, cpu))
     }
 
     /// Disassembles the instruction as if it's using indirect y addressing.
     fn disassemble_indirect_y(&self, instr: &str, memory: &mut Memory, cpu: &CPU) -> String {
         format!("{} (${:02X}),Y = {:04X} @ {:04X} = {:02X}", instr, self.1,
             memory.read_u16_wrapped_msb(self.arg_u16() as usize),
-            self.indirect_y(cpu, memory).0, self.dereference_indirect_y(memory, cpu))
+            self.indirect_y(cpu, memory).0, self.dereference_indirect_y_unrestricted(memory, cpu))
     }
 }
