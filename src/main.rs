@@ -11,10 +11,12 @@ extern crate byteorder;
 extern crate getopts;
 extern crate num;
 
+mod debugger;
 mod io;
 mod nes;
 mod utils;
 
+use debugger::parser;
 use getopts::Options;
 use io::binutils::INESHeader;
 use io::errors::*;
@@ -52,8 +54,17 @@ fn print_usage(opts: Options, reason: Option<&str>) {
 /// program unwinds and stops executing. Once the emulator starts executing, the
 /// application should only stop due to user input, or a panic.
 fn init() -> i32 {
-    // Initialize the argument parser and parse them.
+    //let input = String::from("  arg1 arg2  arg3 \"arg4 and space\" \"a\" \"\"   arg5   ");
+    let input = String::from("  arg1 arg2  arg3β  β  arg4 arg5");
+    let args = parser::parse_raw_input(input);
+    println!("{:?}", args);
+    panic!("premature close");
+
+    // Collect the argument from the environment (command-line arguments).
     let args: Vec<String> = env::args().collect();
+
+    // Initialize the argument parser and parse the args with getopts using the
+    // rules defined against the option object.
     let mut opts = Options::new();
     opts.optopt("t", "test", "test the emulator against a CPU log", "[FILE]");
     opts.optopt("p", "program-counter", "set the initial program counter to a specified address", "[HEX]");
