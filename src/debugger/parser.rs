@@ -17,7 +17,7 @@ enum ParseState {
 /// inside of them.
 ///
 /// The vector of strings returned can be parsed by a library such as getopts.
-pub fn parse_raw_input(input: String) -> Result<Vec<String>, &'static str> {
+pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
     let mut args: Vec<String> = Vec::new(); // Output genned from input.
     let mut control_active = false;         // True when on control code.
 
@@ -79,8 +79,9 @@ pub fn parse_raw_input(input: String) -> Result<Vec<String>, &'static str> {
                         arg_start = 0;
                         state = ParseState::ScanningForArguments;
                     }
-                }
-                if offset == input.len() - 1 {
+                } else if is_quote(c) && !ignore_next {
+                    return Err("quoted arg does not close");
+                } else if offset == input.len() - 1 {
                     let arg = String::from(&input[arg_start..input.len()]);
                     args.push(arg);
                     arg_start = 0;
@@ -117,7 +118,13 @@ pub fn parse_raw_input(input: String) -> Result<Vec<String>, &'static str> {
         offset += c.to_string().len();
     }
 
-    Ok(args)
+    // Expand any control characters into their literals and return the value as
+    // a successfull result.
+    Ok(args.into_iter().map(|arg| {
+        arg.replace("\\ ", " ")
+            .replace("\\\\", "\\")
+            .replace("\\\"", "\"")
+    }).collect())
 }
 
 /// Returns true if the character passed is a control character.

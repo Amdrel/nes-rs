@@ -34,15 +34,12 @@ fn print_version() {
 /// Prints usage information with an optional reason.
 fn print_usage(opts: Options, reason: Option<&str>) {
     let mut stderr = std::io::stderr();
-
-    // Print the reason only if it was passed.
     match reason {
         Some(r) => {
             writeln!(stderr, "{}", r).unwrap();
         },
         None => {}
     }
-
     writeln!(stderr, "nes-rs is an incomplete NES emulator written in Rust.").unwrap();
     writeln!(stderr, "").unwrap();
     writeln!(stderr, "{}", opts.usage("Usage: nes-rs [OPTION]... [FILE]")).unwrap();
@@ -54,12 +51,6 @@ fn print_usage(opts: Options, reason: Option<&str>) {
 /// program unwinds and stops executing. Once the emulator starts executing, the
 /// application should only stop due to user input, or a panic.
 fn init() -> i32 {
-    //let input = String::from("  arg1 arg2  arg3 \"arg4 and space\" \"a\" \"\"   arg5   ");
-    let input = String::from("arg1 arg\\ 2  arg3β βawb slesh\\\\ \"test\" \"this good?\" \"quote \\\" test\" arg4 arg5 \"This is a very long \\\\ argument yay!\"");
-    let args = parser::parse_raw_input(input);
-    println!("{:?}", args);
-    panic!("premature close");
-
     // Collect the argument from the environment (command-line arguments).
     let args: Vec<String> = env::args().collect();
 
@@ -112,7 +103,6 @@ fn init() -> i32 {
     let header = match INESHeader::new(&rom) {
         Ok(header) => header,
         Err(e) => {
-            // TODO: Add complain macro or function, too much repetition.
             let mut stderr = std::io::stderr();
             writeln!(stderr, "nes-rs: cannot parse {}: {}", rom_file_name, e).unwrap();
             return EXIT_INVALID_ROM
@@ -121,18 +111,18 @@ fn init() -> i32 {
 
     // Parse the program counter argument if specified which will then be passed
     // to the CPU later on.
+    //
+    // The first 2 characters in the hex string are to be skipped if they're
+    // "0x" as users are likely to insert this when inputting hexadecimal
+    // numbers. Otherwise just convert the hex string to a 16-bit unsigned
+    // integer as-is.
     let program_counter = match matches.opt_str("program-counter") {
         Some(arg) => {
-            // Ignore the first 2 characters in the hex string if they're "0x"
-            // as users are likely to insert this when inputting hexadecimal
-            // numbers.
             let hex = if &arg[0..2] == "0x" {
                 &arg[2..]
             } else {
                 arg.as_str()
             };
-
-            // Convert the hex string to a 16-bit unsigned integer.
             match u16::from_str_radix(hex, 16) {
                 Ok(pc) => Some(pc),
                 Err(e) => {
