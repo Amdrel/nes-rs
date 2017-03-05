@@ -55,7 +55,7 @@ fn print_usage(opts: Options, reason: Option<&str>) {
 /// application should only stop due to user input, or a panic.
 fn init() -> i32 {
     //let input = String::from("  arg1 arg2  arg3 \"arg4 and space\" \"a\" \"\"   arg5   ");
-    let input = String::from("  arg1 arg2  arg3β  β  arg4 arg5");
+    let input = String::from("arg1 arg\\ 2  arg3β βawb slesh\\\\ \"test\" \"this good?\" \"quote \\\" test\" arg4 arg5 \"This is a very long \\\\ argument yay!\"");
     let args = parser::parse_raw_input(input);
     println!("{:?}", args);
     panic!("premature close");
