@@ -39,6 +39,8 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
     // used since it's not a binary offset of the character currently being
     // parsed.
     for c in input.chars() {
+        let charlen = c.to_string().len();
+
         match state {
             // Determine a scanning state depending on the first non-whitespace
             // character encountered and set the index of the first character in
@@ -47,8 +49,8 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                 if !is_whitespace(c) {
                     if is_quote(c) {
                         state = ParseState::ScanningQuotedArgument;
-                        if offset < input.len() - 1 {
-                            arg_start = offset + 1; // The start of the argument begins here.
+                        if offset < input.len() - charlen {
+                            arg_start = offset + charlen; // The start of the argument begins here.
                         } else {
                             return Err(UNCLOSING_QUOTE);
                         }
@@ -57,7 +59,7 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                         arg_start = offset; // The start of the argument begins here.
 
                         // Push the argument if we're at the end on the input.
-                        if offset == input.len() - 1 {
+                        if offset == input.len() - charlen {
                             let arg = String::from(&input[arg_start..input.len()]);
                             args.push(arg);
                             arg_start = 0;
@@ -78,7 +80,7 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                     state = ParseState::ScanningForArguments;
                 } else if is_quote(c) {
                     return Err(UNCLOSING_QUOTE);
-                } else if offset == input.len() - 1 {
+                } else if offset == input.len() - charlen {
                     let arg = String::from(&input[arg_start..input.len()]);
                     args.push(arg);
                     arg_start = 0;
@@ -94,12 +96,12 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                     args.push(arg);
                     arg_start = 0;
                     state = ParseState::ScanningForArguments;
-                } else if offset == input.len() - 1 {
+                } else if offset == input.len() - charlen {
                     return Err(UNCLOSING_QUOTE);
                 }
             },
         }
-        offset += c.to_string().len();
+        offset += charlen;
     }
 
     Ok(args)
