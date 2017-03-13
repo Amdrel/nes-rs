@@ -6,6 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+const UNCLOSING_QUOTE: &'static str = "quoted arg does not close";
+
+#[derive(Debug)]
 enum ParseState {
     ScanningForArguments,
     ScanningArgument,
@@ -48,11 +51,19 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                         if offset < input.len() - 1 {
                             arg_start = offset + 1; // The start of the argument begins here.
                         } else {
-                            return Err("quoted arg does not close");
+                            return Err(UNCLOSING_QUOTE);
                         }
                     } else {
                         state = ParseState::ScanningArgument;
                         arg_start = offset; // The start of the argument begins here.
+
+                        // Push the argument if we're at the end on the input.
+                        if offset == input.len() - 1 {
+                            let arg = String::from(&input[arg_start..input.len()]);
+                            args.push(arg);
+                            arg_start = 0;
+                            state = ParseState::ScanningForArguments;
+                        }
                     }
                 }
             },
@@ -80,7 +91,7 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                         state = ParseState::ScanningForArguments;
                     }
                 } else if is_quote(c) && !ignore_next {
-                    return Err("quoted arg does not close");
+                    return Err(UNCLOSING_QUOTE);
                 } else if offset == input.len() - 1 {
                     let arg = String::from(&input[arg_start..input.len()]);
                     args.push(arg);
@@ -111,7 +122,7 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
                         state = ParseState::ScanningForArguments;
                     }
                 } else if offset == input.len() - 1 {
-                    return Err("quoted arg does not close");
+                    return Err(UNCLOSING_QUOTE);
                 }
             },
         }
@@ -122,8 +133,8 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
     // a successfull result.
     Ok(args.into_iter().map(|arg| {
         arg.replace("\\ ", " ")
-            .replace("\\\\", "\\")
             .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
     }).collect())
 }
 

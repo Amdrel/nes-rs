@@ -6,16 +6,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use debugger::debugger::Debugger;
 use io::binutils::INESHeader;
 use io::errors::*;
 use io::log;
 use nes::cpu::CPU;
 use nes::ppu::PPU;
 use std::fs::File;
-use std::io::BufReader;
-use std::io::Write;
-use std::io::stderr;
-use std::panic;
+use std::io::{self, Read, Write, BufReader, BufRead};
+use std::sync::mpsc::{self, Sender, Receiver};
+use std::{thread, panic};
 
 use nes::memory::{
     Memory,
@@ -111,7 +111,7 @@ impl NES {
                         self.cpu.begin_testing(BufReader::new(f))
                     },
                     Err(e) => {
-                        let mut stderr = stderr();
+                        let mut stderr = io::stderr();
                         writeln!(stderr, "nes-rs: cannot open {}: {}", filename, e).unwrap();
                         return EXIT_CPU_LOG_NOT_FOUND
                     },
@@ -126,17 +126,30 @@ impl NES {
         // The PPU ticks three times every CPU cycle, though there may need to
         // be changes made for PAL (currently assumes NTSC PPU clock speed).
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            loop {
-                let mut cycles = self.cpu.step(&mut self.memory);
-                self.cpu.sleep(cycles);
-
-                // Execute PPU ticks that should have happened while the CPU
-                // slept. NOTE: Can we make this concurrent?
-                while cycles > 0 {
-                    for _ in 0..3 { // *Should* unroll.
-                        self.ppu.step(&mut self.memory);
+            if self.runtime_options.debugging {
+                // Spin up a thread that listens for input on stdin and sends it
+                // over the defined channel. The input is meant to be subshell
+                // input for the debugger.
+                let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
+                thread::spawn(move || {
+                    loop {
+                        let stdin = io::stdin();
+                        for line in stdin.lock().lines() {
+                            tx.send(line.unwrap()).unwrap();
+                        }
                     }
-                    cycles -= 1;
+                });
+
+                // Create a debugger and call it's step function which wraps
+                // around the standard NES step function so the debugger can
+                // control execution flow.
+                let mut debugger = Debugger::new(rx);
+                loop {
+                    debugger.step(self);
+                }
+            } else {
+                loop {
+                    self.step();
                 }
             }
         }));
@@ -151,12 +164,27 @@ impl NES {
             }
         }
     }
+
+    pub fn step(&mut self) {
+        // Execute the next instruction and sleep the CPU.
+        let mut cycles = self.cpu.step(&mut self.memory);
+        self.cpu.sleep(cycles);
+
+        // Execute PPU ticks that should've happened during CPU sleep.
+        while cycles > 0 {
+            for _ in 0..3 { // *Should* unroll.
+                self.ppu.step(&mut self.memory);
+            }
+            cycles -= 1;
+        }
+    }
 }
 
 /// Flags and other information set through command-line arguments.
 #[derive(Clone, Debug)]
 pub struct NESRuntimeOptions {
-    pub cpu_log: Option<String>,
     pub program_counter: Option<u16>,
-    pub verbose: bool,
+    pub cpu_log:         Option<String>,
+    pub verbose:         bool,
+    pub debugging:       bool,
 }

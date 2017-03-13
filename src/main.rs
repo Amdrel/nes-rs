@@ -62,6 +62,7 @@ fn init() -> i32 {
     opts.optflag("v", "verbose", "display CPU frame information");
     opts.optflag("", "version", "print version information");
     opts.optflag("h", "help", "print this message");
+    opts.optflag("d", "debug", "allow use of the CPU debugger");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
@@ -139,9 +140,10 @@ fn init() -> i32 {
     // executing the ROM. The run function will only return when there is a
     // panic in the CPU or other emulated hardware.
     let runtime_options = NESRuntimeOptions {
-        cpu_log: matches.opt_str("test"),
-        verbose: matches.opt_present("verbose"),
         program_counter: program_counter,
+        cpu_log:         matches.opt_str("test"),
+        verbose:         matches.opt_present("verbose"),
+        debugging:       matches.opt_present("debug"),
     };
     let mut nes = NES::new(rom, header, runtime_options);
     nes.run()
