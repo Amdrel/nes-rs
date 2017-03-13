@@ -22,7 +22,6 @@ enum ParseState {
 /// The vector of strings returned can be parsed by a library such as getopts.
 pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
     let mut args: Vec<String> = Vec::new(); // Output genned from input.
-    let mut control_active = false;         // True when on control code.
 
     // This parser uses a basic state machine that can be in a few different
     // states. The parser can be searching for new arguments, stepping through
@@ -72,25 +71,12 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
             // reached. Once whitespace is encountered, the argument currently
             // being parsed is pushed to the argument list.
             ParseState::ScanningArgument => {
-                let mut ignore_next = false;
-                if is_control_char(c) && !control_active {
-                    control_active = true;
-                    ignore_next = true;
-                } else if is_control_char(c) {
-                    ignore_next = false;
-                    control_active = false;
-                }
-
-                if is_whitespace(c) && !ignore_next {
-                    if control_active {
-                        control_active = false;
-                    } else {
-                        let arg = String::from(&input[arg_start..offset]);
-                        args.push(arg);
-                        arg_start = 0;
-                        state = ParseState::ScanningForArguments;
-                    }
-                } else if is_quote(c) && !ignore_next {
+                if is_whitespace(c) {
+                    let arg = String::from(&input[arg_start..offset]);
+                    args.push(arg);
+                    arg_start = 0;
+                    state = ParseState::ScanningForArguments;
+                } else if is_quote(c) {
                     return Err(UNCLOSING_QUOTE);
                 } else if offset == input.len() - 1 {
                     let arg = String::from(&input[arg_start..input.len()]);
@@ -103,24 +89,11 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
             // Scan until a non escaped quote is reached. Once encountered, the
             // argument currently being parsed is pushed to the argument list.
             ParseState::ScanningQuotedArgument => {
-                let mut ignore_next = false;
-                if is_control_char(c) && !control_active {
-                    control_active = true;
-                    ignore_next = true;
-                } else if is_control_char(c) {
-                    ignore_next = false;
-                    control_active = false;
-                }
-
-                if is_quote(c) && !ignore_next {
-                    if control_active {
-                        control_active = false;
-                    } else {
-                        let arg = String::from(&input[arg_start..offset]);
-                        args.push(arg);
-                        arg_start = 0;
-                        state = ParseState::ScanningForArguments;
-                    }
+                if is_quote(c) {
+                    let arg = String::from(&input[arg_start..offset]);
+                    args.push(arg);
+                    arg_start = 0;
+                    state = ParseState::ScanningForArguments;
                 } else if offset == input.len() - 1 {
                     return Err(UNCLOSING_QUOTE);
                 }
@@ -129,18 +102,7 @@ pub fn input_to_arguments(input: String) -> Result<Vec<String>, &'static str> {
         offset += c.to_string().len();
     }
 
-    // Expand any control characters into their literals and return the value as
-    // a successfull result.
-    Ok(args.into_iter().map(|arg| {
-        arg.replace("\\ ", " ")
-            .replace("\\\"", "\"")
-            .replace("\\\\", "\\")
-    }).collect())
-}
-
-/// Returns true if the character passed is a control character.
-fn is_control_char(c: char) -> bool {
-    c == '\\'
+    Ok(args)
 }
 
 /// Returns true if the character passed is a whitespace character. Both spaces

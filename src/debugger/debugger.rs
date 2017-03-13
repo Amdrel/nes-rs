@@ -26,7 +26,7 @@ impl Debugger {
     pub fn new(receiver: Receiver<String>) -> Self {
         Debugger {
             receiver: receiver,
-            stepping: false,
+            stepping: true,
         }
     }
 
@@ -38,7 +38,7 @@ impl Debugger {
             Err(e) => {}, // Ignore empty and disconnect errors.
         };
 
-        if !self.stepping {
+        if self.stepping {
             nes.step();
         }
     }
