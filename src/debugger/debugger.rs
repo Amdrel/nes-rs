@@ -7,15 +7,17 @@
 // except according to those terms.
 
 use debugger::parser;
+use getopts::Options;
 use io::log;
 use nes::nes::NES;
-use std::io::{self, Write};
+use std::io::{self, Write, stderr, stdout};
 use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
 
 #[derive(Debug)]
 enum Command {
+    Help,
     Stop,
     Continue,
     Dump,
@@ -33,10 +35,12 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new(receiver: Receiver<String>) -> Self {
-        Debugger {
+        let mut debugger = Debugger {
             receiver: receiver,
             stepping: true,
-        }
+        };
+        debugger.print_cursor();
+        debugger
     }
 
     /// Steps the CPU forward a single instruction, as well as executing any PPU
@@ -46,15 +50,18 @@ impl Debugger {
         // the debugger prompt blocking it.
         match self.receiver.try_recv() {
             Ok(input) => {
-                match self.interpret(input) {
+                match self.interpret(input.clone()) {
                     Some(command) => {
                         self.execute_command(command, nes);
                     },
                     None => {
-                        let mut stderr = io::stderr();
-                        writeln!(stderr, "nes-rs: unknown command specified").unwrap();
+                        if input.len() > 0 {
+                            writeln!(stderr(), "nes-rs: unknown command specified").unwrap();
+                        }
                     },
                 };
+
+                self.print_cursor();
             },
             Err(_) => {}, // Ignore empty and disconnect errors.
         };
@@ -67,6 +74,11 @@ impl Debugger {
         } else {
             thread::sleep(Duration::from_millis(16));
         }
+    }
+
+    /// Prints a fancy cursor to hint at a subshell being available.
+    fn print_cursor(&self) {
+        write!(stderr(), "> ").unwrap();
     }
 
     /// Parse a raw input string into a list of arguments and a command. This
@@ -85,13 +97,13 @@ impl Debugger {
             let raw_command = if args.len() > 0 {
                 &args[0]
             } else {
-                writeln!(stderr, "nes-rs: no command specified").unwrap();
                 return None;
             };
 
             // Map command strings to the command enum type.
             match raw_command.to_lowercase().as_str() {
                 // Full commands.
+                "help"     => Command::Help,
                 "stop"     => Command::Stop,
                 "continue" => Command::Continue,
                 "dump"     => Command::Dump,
@@ -117,10 +129,25 @@ impl Debugger {
     /// Executes the correct debugger command based on the enum passed.
     fn execute_command(&mut self, command: CommandWithArguments, nes: &mut NES) {
         match command.command {
+            Command::Help => self.execute_help(),
             Command::Stop => self.execute_stop(nes),
             Command::Continue => self.execute_continue(nes),
             Command::Dump => self.execute_dump(nes, &command.args),
         };
+    }
+
+    /// Shows friendly help text for information about using the debugger.
+    fn execute_help(&self) {
+        writeln!(stderr(), "
+Welcome to the nes-rs debugger!
+
+This subshell provides access to a few different commands that allow you to
+modify and observe the state of the virtual machine. At the moment there is a
+very limited set of commands and more may be added in the future.
+
+Supported commands: help | stop | continue | dump
+"
+        ).unwrap();
     }
 
     /// Stops execution of the CPU and PPU to allow the human some time to debug
@@ -137,7 +164,66 @@ impl Debugger {
     }
 
     /// Allows dumping memory or program code at a specified memory address.
+    /// Memory can be dumped as hex or instructions depending on the address.
+    /// Dumping hex is easy if word length is assumed, however instructions are a
+    /// whole other beast.
+    ///
+    /// Since instructions can be varying lengths, you can interpret them in
+    /// different ways depending on your offset (i.e the argument of an opcode
+    /// being used as an opcode due to a misplaced pc). We just read forwards so
+    /// we don't have to worry about this problem, if we need to read backwards
+    /// just check the log for a pc smaller than the current one and guess the
+    /// peek value.
     fn execute_dump(&mut self, nes: &mut NES, args: &Vec<String>) {
-        log::log("debugger", "TODO: Dump truck time!", &nes.runtime_options);
+        const USAGE: &'static str = "Usage: dump [OPTION]... [ADDRESS]";
+
+        let mut opts = Options::new();
+        opts.optopt("p", "peek", "how far forward should memory be dumped", "NUMBER");
+
+        let matches = match opts.parse(&args[1..]) {
+            Ok(m) => m,
+            Err(f) => {
+                writeln!(stderr(), "dump: {}", f).unwrap();
+                writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+                return;
+            },
+        };
+
+        let peek = match matches.opt_str("peek") {
+            Some(arg) => {
+                match arg.parse::<i32>() {
+                    Ok(p) => p,
+                    Err(e) => {
+                        writeln!(stderr(), "dump: {}", e).unwrap();
+                        writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+                        return;
+                    },
+                }
+            },
+            None => 10,
+        };
+
+        let addr = if !matches.free.is_empty() {
+            let arg = matches.free[0].clone();
+            let hex = if arg.len() >= 2 && &arg[0..2] == "0x" {
+                &arg[2..]
+            } else {
+                arg.as_str()
+            };
+
+            match u16::from_str_radix(hex, 16) {
+                Ok(pc) => Some(pc),
+                Err(e) => {
+                    writeln!(stderr(), "dump: cannot parse address: {}", e).unwrap();
+                    return;
+                },
+            }
+        } else {
+            writeln!(stderr(), "dump: no address specified").unwrap();
+            writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+            return;
+        };
+
+        println!("address: {}, peek: {}", addr.unwrap(), peek);
     }
 }

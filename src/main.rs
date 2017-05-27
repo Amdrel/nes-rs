@@ -63,6 +63,7 @@ fn init() -> i32 {
     opts.optflag("", "version", "print version information");
     opts.optflag("h", "help", "print this message");
     opts.optflag("d", "debug", "allow use of the CPU debugger");
+
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
@@ -119,7 +120,7 @@ fn init() -> i32 {
     // integer as-is.
     let program_counter = match matches.opt_str("program-counter") {
         Some(arg) => {
-            let hex = if &arg[0..2] == "0x" {
+            let hex = if arg.len() >= 2 && &arg[0..2] == "0x" {
                 &arg[2..]
             } else {
                 arg.as_str()
