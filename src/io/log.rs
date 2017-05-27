@@ -6,12 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use chrono::{DateTime, Local};
 use nes::nes::NESRuntimeOptions;
 
 /// Logs a message to stdout with a given prefix if the emulator was started
 /// with the verbose flag set.
 pub fn log<P, T>(prefix: P, text: T, runtime_options: &NESRuntimeOptions) where P: Into<String>, T: Into<String> {
     if runtime_options.verbose {
-        println!("[{}] {}", prefix.into(), text.into());
+        let local: DateTime<Local> = Local::now();
+        println!("[{}] -- [{}] {}", local, prefix.into(), text.into());
     }
 }
