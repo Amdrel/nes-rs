@@ -10,13 +10,13 @@
 extern crate byteorder;
 extern crate getopts;
 extern crate num;
+extern crate chrono;
 
 mod debugger;
 mod io;
 mod nes;
 mod utils;
 
-use debugger::parser;
 use getopts::Options;
 use io::binutils::INESHeader;
 use io::errors::*;

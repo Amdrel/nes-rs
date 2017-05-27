@@ -165,12 +165,12 @@ impl NES {
         }
     }
 
+    /// Executes a CPU instruction and steps the PPU 3 times per CPU cycle. This
+    /// works since the PPU and CPU clocks are synchronized 1 to 3.
     pub fn step(&mut self) {
-        // Execute the next instruction and sleep the CPU.
         let mut cycles = self.cpu.step(&mut self.memory);
         self.cpu.sleep(cycles);
 
-        // Execute PPU ticks that should've happened during CPU sleep.
         while cycles > 0 {
             for _ in 0..3 { // *Should* unroll.
                 self.ppu.step(&mut self.memory);
