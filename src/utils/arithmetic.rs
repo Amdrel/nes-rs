@@ -25,3 +25,17 @@ pub fn add_relative(base_addr: u16, displacement: i8) -> u16 {
         base_addr.wrapping_add(displacement as u16)
     }
 }
+
+/// Converts a hexadecimal string to a u16 with or without leading 0x.
+pub fn hex_to_u16(hex: &String) -> Option<u16> {
+    let stripped = if hex.len() >= 2 && &hex[0..2] == "0x" {
+        &hex[2..]
+    } else {
+        hex.as_str()
+    };
+
+    match u16::from_str_radix(stripped, 16) {
+        Ok(pc) => Some(pc),
+        Err(_) => None,
+    }
+}

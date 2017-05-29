@@ -197,7 +197,7 @@ impl Instruction {
             TXAImp   => self.disassemble_implied("TXA"),
             TXSImp   => self.disassemble_implied("TXS"),
             TYAImp   => self.disassemble_implied("TYA"),
-            _ => { panic!("Unimplemented opcode found: {:?}", opcode); }
+            _ => { "GARBAGE".to_string() },
         }
     }
 

@@ -348,7 +348,7 @@ impl Memory {
     ///
     /// TODO: Switch all references to struct members to functions so this
     /// mapper implementation can be shared between ROM mappers.
-    pub fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+    fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         match addr {
             RAM_START_ADDR...RAM_END_ADDR =>
                 (&mut self.ram, addr, true, true),

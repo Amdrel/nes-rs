@@ -10,6 +10,7 @@ use debugger::parser;
 use getopts::Options;
 use io::log;
 use nes::nes::NES;
+use utils::arithmetic;
 use std::io::{self, Write, stderr, stdout};
 use std::sync::mpsc::{SyncSender, Receiver};
 use std::thread;
@@ -22,6 +23,7 @@ enum Command {
     Stop,
     Continue,
     Dump,
+    ObjDump,
 }
 
 struct CommandWithArguments {
@@ -53,16 +55,13 @@ impl Debugger {
         // the debugger prompt blocking it.
         match self.receiver.try_recv() {
             Ok(input) => {
-                match self.interpret(input.clone()) {
-                    Some(command) => {
-                        self.execute_command(command, nes);
-                    },
-                    None => {
-                        if input.len() > 0 {
-                            writeln!(stderr(), "nes-rs: unknown command specified").unwrap();
-                        }
-                    },
-                };
+                if let Some(command) = self.interpret(input.clone()) {
+                    self.execute_command(command, nes);
+                } else {
+                    if input.len() > 0 {
+                        writeln!(stderr(), "nes-rs: unknown command specified").unwrap();
+                    }
+                }
 
                 // Tell input thread to continue and display prompt.
                 if let Err(_) = self.sender.send(0) {
@@ -111,10 +110,12 @@ impl Debugger {
                 "stop"     => Command::Stop,
                 "continue" => Command::Continue,
                 "dump"     => Command::Dump,
+                "objdump"  => Command::ObjDump,
                 // Aliases.
-                "s" => Command::Stop,
-                "c" => Command::Continue,
-                "d" => Command::Dump,
+                "s"  => Command::Stop,
+                "c"  => Command::Continue,
+                "d"  => Command::Dump,
+                "od" => Command::ObjDump,
                 // Unknown command.
                 _ => {
                     return None;
@@ -138,6 +139,7 @@ impl Debugger {
             Command::Stop => self.execute_stop(nes),
             Command::Continue => self.execute_continue(nes),
             Command::Dump => self.execute_dump(nes, &command.args),
+            Command::ObjDump => self.execute_objdump(nes, &command.args),
         };
     }
 
@@ -199,6 +201,7 @@ Supported commands: help | stop | continue | dump
             },
         };
 
+        // Peek allows specifying how much information to dump.
         let peek = match matches.opt_str("peek") {
             Some(arg) => {
                 match arg.parse::<i32>() {
@@ -213,22 +216,14 @@ Supported commands: help | stop | continue | dump
             None => 10,
         };
 
-        // Parse hex representation of a memory address.
+        // Parse hex representation of a memory address at free argument.
         let addr = if !matches.free.is_empty() {
             let arg = matches.free[0].clone();
-
-            let hex = if arg.len() >= 2 && &arg[0..2] == "0x" {
-                &arg[2..]
+            if let Some(hex) = arithmetic::hex_to_u16(&arg) {
+                hex
             } else {
-                arg.as_str()
-            };
-
-            match u16::from_str_radix(hex, 16) {
-                Ok(pc) => Some(pc),
-                Err(e) => {
-                    writeln!(stderr(), "dump: cannot parse address: {}", e).unwrap();
-                    return;
-                },
+                writeln!(stderr(), "dump: cannot parse address: {}", arg).unwrap();
+                return;
             }
         } else {
             writeln!(stderr(), "dump: no address specified").unwrap();
@@ -236,6 +231,13 @@ Supported commands: help | stop | continue | dump
             return;
         };
 
-        println!("address: {}, peek: {}", addr.unwrap(), peek);
+        println!("address: {}, peek: {}", addr, peek);
+    }
+
+    fn execute_objdump(&mut self, nes: &mut NES, args: &Vec<String>) {
+        const USAGE: &'static str = "Usage: objdump [OPTION]... [ADDRESS]";
+
+        let mut opts = Options::new();
+        opts.optopt("p", "peek", "how far forward should memory be dumped", "NUMBER");
     }
 }

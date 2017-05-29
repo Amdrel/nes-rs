@@ -21,11 +21,11 @@ mod utils;
 use getopts::Options;
 use io::binutils::INESHeader;
 use io::errors::*;
+use utils::arithmetic;
 use nes::nes::NES;
 use nes::nes::NESRuntimeOptions;
 use std::env;
-use std::io::Write;
-use std::u16;
+use std::io::{Write, stderr};
 
 /// Prints the application name alongside the cargo version.
 fn print_version() {
@@ -102,7 +102,9 @@ fn init() -> i32 {
     };
 
     // Parse the rom's header to check if it's a valid iNES ROM and store it in
-    // an internal structure.
+    // an internal structure. In addition to program code, the iNES file
+    // contains useful metadata about the cartrige so we can tweak how the
+    // emulator works to cater for that.
     let header = match INESHeader::new(&rom) {
         Ok(header) => header,
         Err(e) => {
@@ -113,29 +115,16 @@ fn init() -> i32 {
     };
 
     // Parse the program counter argument if specified which will then be passed
-    // to the CPU later on.
-    //
-    // The first 2 characters in the hex string are to be skipped if they're
-    // "0x" as users are likely to insert this when inputting hexadecimal
-    // numbers. Otherwise just convert the hex string to a 16-bit unsigned
-    // integer as-is.
-    let program_counter = match matches.opt_str("program-counter") {
-        Some(arg) => {
-            let hex = if arg.len() >= 2 && &arg[0..2] == "0x" {
-                &arg[2..]
-            } else {
-                arg.as_str()
-            };
-            match u16::from_str_radix(hex, 16) {
-                Ok(pc) => Some(pc),
-                Err(e) => {
-                    let mut stderr = std::io::stderr();
-                    writeln!(stderr, "nes-rs: cannot parse program counter: {}", e).unwrap();
-                    return EXIT_INVALID_PC;
-                },
-            }
-        },
-        None => None,
+    // to the CPU later on. This is useful for automated testing of the CPU.
+    let program_counter = if let Some(arg) = matches.opt_str("program-counter") {
+        if let Some(hex) = arithmetic::hex_to_u16(&arg) {
+            Some(hex)
+        } else {
+            writeln!(stderr(), "nes-rs: cannot parse program counter").unwrap();
+            return EXIT_INVALID_PC;
+        }
+    } else {
+        None
     };
 
     // Initialize the NES with the mapper specified in the INES file and start
@@ -154,9 +143,5 @@ fn init() -> i32 {
 /// Entry point of the program and wrapper of init. Takes the exit code returned
 /// from init and exits with it.
 fn main() {
-    // std::process::exit requires a signed 32 bit integer, however POSIX
-    // systems cannot have an exit code greater than 8 bits so that is what the
-    // init function returns.
-    let exit_code = init();
-    std::process::exit(exit_code); // Unwinding done, safe to exit.
+    std::process::exit(init()); // Unwinding done, safe to exit.
 }
