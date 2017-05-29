@@ -11,13 +11,14 @@ use getopts::Options;
 use io::log;
 use nes::nes::NES;
 use std::io::{self, Write, stderr, stdout};
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{SyncSender, Receiver};
 use std::thread;
 use std::time::Duration;
 
 #[derive(Debug)]
 enum Command {
     Help,
+    Exit,
     Stop,
     Continue,
     Dump,
@@ -29,23 +30,25 @@ struct CommandWithArguments {
 }
 
 pub struct Debugger {
+    sender:   SyncSender<u8>,
     receiver: Receiver<String>,
     stepping: bool,
+    shutdown: bool,
 }
 
 impl Debugger {
-    pub fn new(receiver: Receiver<String>) -> Self {
-        let mut debugger = Debugger {
+    pub fn new(sender: SyncSender<u8>, receiver: Receiver<String>) -> Self {
+        Self {
+            sender: sender,
             receiver: receiver,
             stepping: true,
-        };
-        debugger.print_cursor();
-        debugger
+            shutdown: false,
+        }
     }
 
     /// Steps the CPU forward a single instruction, as well as executing any PPU
     /// and sound functionality that happens in-between.
-    pub fn step(&mut self, nes: &mut NES) {
+    pub fn step(&mut self, nes: &mut NES) -> bool {
         // Input is received from another thread so the emulator can run without
         // the debugger prompt blocking it.
         match self.receiver.try_recv() {
@@ -61,7 +64,10 @@ impl Debugger {
                     },
                 };
 
-                self.print_cursor();
+                // Tell input thread to continue and display prompt.
+                if let Err(_) = self.sender.send(0) {
+                    // Receiver was probably destroyed in spin-down.
+                }
             },
             Err(_) => {}, // Ignore empty and disconnect errors.
         };
@@ -74,11 +80,8 @@ impl Debugger {
         } else {
             thread::sleep(Duration::from_millis(16));
         }
-    }
 
-    /// Prints a fancy cursor to hint at a subshell being available.
-    fn print_cursor(&self) {
-        write!(stderr(), "> ").unwrap();
+        self.shutdown
     }
 
     /// Parse a raw input string into a list of arguments and a command. This
@@ -104,6 +107,7 @@ impl Debugger {
             match raw_command.to_lowercase().as_str() {
                 // Full commands.
                 "help"     => Command::Help,
+                "exit"     => Command::Exit,
                 "stop"     => Command::Stop,
                 "continue" => Command::Continue,
                 "dump"     => Command::Dump,
@@ -130,6 +134,7 @@ impl Debugger {
     fn execute_command(&mut self, command: CommandWithArguments, nes: &mut NES) {
         match command.command {
             Command::Help => self.execute_help(),
+            Command::Exit => self.execute_exit(),
             Command::Stop => self.execute_stop(nes),
             Command::Continue => self.execute_continue(nes),
             Command::Dump => self.execute_dump(nes, &command.args),
@@ -148,6 +153,11 @@ very limited set of commands and more may be added in the future.
 Supported commands: help | stop | continue | dump
 "
         ).unwrap();
+    }
+
+    /// Stops the virtual machine by setting the shutdown flag.
+    fn execute_exit(&mut self) {
+        self.shutdown = true;
     }
 
     /// Stops execution of the CPU and PPU to allow the human some time to debug
@@ -203,8 +213,10 @@ Supported commands: help | stop | continue | dump
             None => 10,
         };
 
+        // Parse hex representation of a memory address.
         let addr = if !matches.free.is_empty() {
             let arg = matches.free[0].clone();
+
             let hex = if arg.len() >= 2 && &arg[0..2] == "0x" {
                 &arg[2..]
             } else {

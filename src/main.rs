@@ -11,6 +11,7 @@ extern crate byteorder;
 extern crate getopts;
 extern crate num;
 extern crate chrono;
+extern crate rustyline;
 
 mod debugger;
 mod io;

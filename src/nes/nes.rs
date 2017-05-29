@@ -13,9 +13,11 @@ use io::log;
 use nes::cpu::CPU;
 use nes::ppu::PPU;
 use std::fs::File;
-use std::io::{self, Read, Write, BufReader, BufRead};
-use std::sync::mpsc::{self, Sender, Receiver};
+use std::io::{self, stdin, Read, Write, BufReader, BufRead};
+use std::sync::mpsc::{self, SyncSender, Receiver};
 use std::{thread, panic};
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 
 use nes::memory::{
     Memory,
@@ -25,6 +27,8 @@ use nes::memory::{
     PRG_ROM_2_START,
     PRG_ROM_SIZE
 };
+
+const HISTORY_FILE: &'static str = ".nes-rs-history.txt";
 
 /// The NES struct owns all hardware peripherals and lends them when needed. The
 /// runtime cost of this should be removed with optimized builds (untested).
@@ -121,32 +125,70 @@ impl NES {
         }
 
         // Start cycling the CPU and PPU and add a panic catcher so crash
-        // information can be shown if the CPU panics.
+        // information can be shown if the CPU panics.The PPU ticks three times
+        // every CPU cycle, though there may need to be changes made for PAL
+        // (currently assumes NTSC PPU clock speed).
         //
-        // The PPU ticks three times every CPU cycle, though there may need to
-        // be changes made for PAL (currently assumes NTSC PPU clock speed).
+        // Depending on the runtime environment, execution can go one of two
+        // ways. Either the virtual machine step function is called in an
+        // infinite loop, or the debugger handles execution if the debug flag is
+        // set.
+        //
+        // In debug mode, there is another step function that wraps the main
+        // step function that lets the debugger control execution flow and
+        // access virtual machine state. Another thread is also setup that waits
+        // for input on stdin that sends input to the debugger for the debugger
+        // subshell.
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             if self.runtime_options.debugging {
-                // Spin up a thread that listens for input on stdin and sends it
-                // over the defined channel. The input is meant to be subshell
-                // input for the debugger.
-                let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
+                let (tx, rx): (SyncSender<String>, Receiver<String>) = mpsc::sync_channel(1);
+                let (mtx, mrx): (SyncSender<u8>, Receiver<u8>) = mpsc::sync_channel(1);
+
                 thread::spawn(move || {
-                    loop {
-                        let stdin = io::stdin();
-                        for line in stdin.lock().lines() {
-                            tx.send(line.unwrap()).unwrap();
-                        }
+                    let mut rl = Editor::<()>::new();
+                    if let Err(_) = rl.load_history(HISTORY_FILE) {
+                        // No history saved, do nothing.
                     }
+
+                    loop {
+                        let readline = rl.readline("(nes-rs) ");
+                        match readline {
+                            Ok(line) => {
+                                rl.add_history_entry(&line);
+                                tx.send(line).unwrap();
+
+                                // Block until command is run.
+                                match mrx.recv() {
+                                    Ok(_) => {},
+                                    Err(err) => {
+                                        println!("Error: {:?}", err);
+                                        tx.send("exit".to_string()).unwrap();
+                                        break;
+                                    },
+                                }
+                            },
+                            Err(ReadlineError::Interrupted) => {
+                                tx.send("exit".to_string()).unwrap();
+                                break;
+                            },
+                            Err(ReadlineError::Eof) => {
+                                tx.send("exit".to_string()).unwrap();
+                                break;
+                            },
+                            Err(err) => {
+                                println!("Error: {:?}", err);
+                                tx.send("exit".to_string()).unwrap();
+                                break;
+                            },
+                        };
+                    }
+
+                    rl.save_history(HISTORY_FILE).unwrap();
                 });
 
-                // Create a debugger and call it's step function which wraps
-                // around the standard NES step function so the debugger can
-                // control execution flow.
-                let mut debugger = Debugger::new(rx);
-                loop {
-                    debugger.step(self);
-                }
+                // Execute until shutdown signal is received from debugger.
+                let mut debugger = Debugger::new(mtx, rx);
+                while !debugger.step(self) {}
             } else {
                 loop {
                     self.step();
@@ -155,7 +197,7 @@ impl NES {
         }));
         match result {
             Ok(_) => {
-                println!("Shutting down...");
+                println!("Shutting down nes-rs, happy emulating!");
                 EXIT_SUCCESS // Success exit code.
             },
             Err(_) => {
