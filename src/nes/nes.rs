@@ -117,7 +117,7 @@ impl NES {
                     Err(e) => {
                         let mut stderr = io::stderr();
                         writeln!(stderr, "nes-rs: cannot open {}: {}", filename, e).unwrap();
-                        return EXIT_CPU_LOG_NOT_FOUND
+                        return EXIT_CPU_LOG_NOT_FOUND;
                     },
                 }
             },
@@ -144,47 +144,8 @@ impl NES {
                 let (tx, rx): (SyncSender<String>, Receiver<String>) = mpsc::sync_channel(1);
                 let (mtx, mrx): (SyncSender<u8>, Receiver<u8>) = mpsc::sync_channel(1);
 
-                thread::spawn(move || {
-                    let mut rl = Editor::<()>::new();
-                    if let Err(_) = rl.load_history(HISTORY_FILE) {
-                        // No history saved, do nothing.
-                    }
-
-                    loop {
-                        let readline = rl.readline("(nes-rs) ");
-                        match readline {
-                            Ok(line) => {
-                                rl.add_history_entry(&line);
-                                tx.send(line).unwrap();
-
-                                // Block until command is run.
-                                match mrx.recv() {
-                                    Ok(_) => {},
-                                    Err(err) => {
-                                        println!("Error: {:?}", err);
-                                        tx.send("exit".to_string()).unwrap();
-                                        break;
-                                    },
-                                }
-                            },
-                            Err(ReadlineError::Interrupted) => {
-                                tx.send("exit".to_string()).unwrap();
-                                break;
-                            },
-                            Err(ReadlineError::Eof) => {
-                                tx.send("exit".to_string()).unwrap();
-                                break;
-                            },
-                            Err(err) => {
-                                println!("Error: {:?}", err);
-                                tx.send("exit".to_string()).unwrap();
-                                break;
-                            },
-                        };
-                    }
-
-                    rl.save_history(HISTORY_FILE).unwrap();
-                });
+                // Input is read on another thread, so spin one up.
+                self.setup_readline_thread(tx, mrx);
 
                 // Execute until shutdown signal is received from debugger.
                 let mut debugger = Debugger::new(mtx, rx);
@@ -195,14 +156,18 @@ impl NES {
                 }
             }
         }));
+
+        // Unwinding point with shutdown code. In the event of a panic, we want
+        // to display some diagnostic information to the user that can be sent
+        // to the developer.
         match result {
             Ok(_) => {
                 println!("Shutting down nes-rs, happy emulating!");
-                EXIT_SUCCESS // Success exit code.
+                return EXIT_SUCCESS; // Success exit code.
             },
             Err(_) => {
                 println!("{}", self.cpu);
-                EXIT_RUNTIME_FAILURE // Runtime failure exit code.
+                return EXIT_RUNTIME_FAILURE; // Runtime failure exit code.
             }
         }
     }
@@ -219,6 +184,53 @@ impl NES {
             }
             cycles -= 1;
         }
+    }
+
+    /// Creates a readline loop on another thread and sends commands to the
+    /// debugger over a synchronous rust channel. Offers quality of life features
+    /// such as history built into the library used.
+    fn setup_readline_thread(&self, tx: SyncSender<String>, rx: Receiver<u8>) {
+        thread::spawn(move || {
+            let mut rl = Editor::<()>::new();
+            if let Err(_) = rl.load_history(HISTORY_FILE) {
+                // No history saved, do nothing.
+            }
+
+            loop {
+                let readline = rl.readline("(nes-rs) ");
+                match readline {
+                    Ok(line) => {
+                        rl.add_history_entry(&line);
+                        tx.send(line).unwrap();
+
+                        // Block until command is run.
+                        match rx.recv() {
+                            Ok(_) => {},
+                            Err(err) => {
+                                println!("Error: {:?}", err);
+                                tx.send("exit".to_string()).unwrap();
+                                break;
+                            },
+                        }
+                    },
+                    Err(ReadlineError::Interrupted) => {
+                        tx.send("exit".to_string()).unwrap();
+                        break;
+                    },
+                    Err(ReadlineError::Eof) => {
+                        tx.send("exit".to_string()).unwrap();
+                        break;
+                    },
+                    Err(err) => {
+                        println!("Error: {:?}", err);
+                        tx.send("exit".to_string()).unwrap();
+                        break;
+                    },
+                };
+            }
+
+            rl.save_history(HISTORY_FILE).unwrap();
+        });
     }
 }
 
