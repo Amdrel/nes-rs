@@ -175,17 +175,8 @@ Supported commands: help | stop | continue | dump
         self.stepping = true;
     }
 
-    /// Allows dumping memory or program code at a specified memory address.
-    /// Memory can be dumped as hex or instructions depending on the address.
-    /// Dumping hex is easy if word length is assumed, however instructions are a
-    /// whole other beast.
-    ///
-    /// Since instructions can be varying lengths, you can interpret them in
-    /// different ways depending on your offset (i.e the argument of an opcode
-    /// being used as an opcode due to a misplaced pc). We just read forwards so
-    /// we don't have to worry about this problem, if we need to read backwards
-    /// just check the log for a pc smaller than the current one and guess the
-    /// peek value.
+    /// Allows dumping memory or program code at a specified memory address. All
+    /// values are assumed to be 8-bit words.
     fn execute_dump(&mut self, nes: &mut NES, args: &Vec<String>) {
         const USAGE: &'static str = "Usage: dump [OPTION]... [ADDRESS]";
 
@@ -204,7 +195,7 @@ Supported commands: help | stop | continue | dump
         // Peek allows specifying how much information to dump.
         let peek = match matches.opt_str("peek") {
             Some(arg) => {
-                match arg.parse::<i32>() {
+                match arg.parse::<u16>() {
                     Ok(p) => p,
                     Err(e) => {
                         writeln!(stderr(), "dump: {}", e).unwrap();
@@ -216,7 +207,8 @@ Supported commands: help | stop | continue | dump
             None => 10,
         };
 
-        // Parse hex representation of a memory address at free argument.
+        // Parse hex representation of a memory address at free argument if
+        // available, otherwise the address will be the program counter.
         let addr = if !matches.free.is_empty() {
             let arg = matches.free[0].clone();
             if let Some(hex) = arithmetic::hex_to_u16(&arg) {
@@ -226,18 +218,54 @@ Supported commands: help | stop | continue | dump
                 return;
             }
         } else {
-            writeln!(stderr(), "dump: no address specified").unwrap();
-            writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
-            return;
+            nes.cpu.pc
         };
 
-        println!("address: {}, peek: {}", addr, peek);
+        for idx in 0..peek {
+            let peek_offset = addr.wrapping_add(idx * 16);
+            let mut bytes: [u8; 16] = [0; 16];
+            for offset in 0..16 {
+                let current_addr = (peek_offset.wrapping_add(offset)) as usize;
+                let value = nes.memory.read_u8_unrestricted(current_addr);
+                bytes[offset as usize] = value;
+            }
+
+            // Print the memory address for for the first byte in the line.
+            print!("{:04x}  ", peek_offset);
+
+            // Print out 2 lines of 8-bit bytes showing 8 bytes each.
+            for offset in 0..8 {
+                print!("{:02x} ", bytes[offset]);
+            }
+            print!(" ");
+            for offset in 0..8 {
+                print!("{:02x} ", bytes[offset + 8]);
+            }
+
+            // Print out an ASCII representation of the bytes.
+            print!(" ");
+            for offset in 0..16 {
+                let value = bytes[offset];
+                let human_char = if value >= 0x20 && value <= 0x7E {
+                    value as char
+                } else {
+                    '.'
+                };
+                print!("{}", human_char);
+            }
+            print!("\n");
+
+            stdout().flush().unwrap();
+        }
     }
 
+    /// Similar to dump, but will interpret data as instructions.
     fn execute_objdump(&mut self, nes: &mut NES, args: &Vec<String>) {
         const USAGE: &'static str = "Usage: objdump [OPTION]... [ADDRESS]";
 
         let mut opts = Options::new();
         opts.optopt("p", "peek", "how far forward should memory be dumped", "NUMBER");
+
+        unimplemented!();
     }
 }
