@@ -16,6 +16,7 @@ use std::fs::File;
 use std::io::{self, stdin, Read, Write, BufReader, BufRead};
 use std::sync::mpsc::{self, SyncSender, Receiver};
 use std::{thread, panic};
+use std::time::Duration;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -166,6 +167,7 @@ impl NES {
                 return EXIT_SUCCESS; // Success exit code.
             },
             Err(_) => {
+                thread::sleep(Duration::from_millis(16));
                 println!("{}", self.cpu);
                 return EXIT_RUNTIME_FAILURE; // Runtime failure exit code.
             }
@@ -206,9 +208,7 @@ impl NES {
                         // Block until command is run.
                         match rx.recv() {
                             Ok(_) => {},
-                            Err(err) => {
-                                println!("Error: {:?}", err);
-                                tx.send("exit".to_string()).unwrap();
+                            Err(_) => {
                                 break;
                             },
                         }
