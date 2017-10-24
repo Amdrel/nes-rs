@@ -10,11 +10,11 @@ use debugger::parser;
 use getopts::Options;
 use io::log;
 use nes::nes::NES;
-use utils::arithmetic;
 use std::io::{self, Write, stderr, stdout};
 use std::sync::mpsc::{SyncSender, Receiver};
 use std::thread;
 use std::time::Duration;
+use utils::arithmetic;
 
 #[derive(Debug)]
 enum Command {
@@ -50,9 +50,12 @@ impl Debugger {
 
     /// Steps the CPU forward a single instruction, as well as executing any PPU
     /// and sound functionality that happens in-between.
+    ///
+    /// This step function is different than the normal step function as it
+    /// receives input from another thread so the emulator can be stopped and run
+    /// debugger commands. try_recv is used so the emulation isn't blocked as we
+    /// wait for input.
     pub fn step(&mut self, nes: &mut NES) -> bool {
-        // Input is received from another thread so the emulator can run without
-        // the debugger prompt blocking it.
         match self.receiver.try_recv() {
             Ok(input) => {
                 if let Some(command) = self.interpret(input.clone()) {
@@ -63,9 +66,11 @@ impl Debugger {
                     }
                 }
 
-                // Tell input thread to continue and display prompt.
+                // Tell input thread to continue by sending it a '0' code.
+                // Readline won't show a prompt or accept input until this code
+                // is received so the prompt always shows after output from the
+                // executed debugger command is done being shown.
                 if let Err(_) = self.sender.send(0) {
-                    // Receiver was probably destroyed in spin-down.
                 }
             },
             Err(_) => {}, // Ignore empty and disconnect errors.
@@ -80,7 +85,7 @@ impl Debugger {
             thread::sleep(Duration::from_millis(16));
         }
 
-        self.shutdown
+        return self.shutdown;
     }
 
     /// Parse a raw input string into a list of arguments and a command. This
@@ -191,8 +196,6 @@ Supported commands: help | stop | continue | dump
                 return;
             },
         };
-
-        // Peek allows specifying how much information to dump.
         let peek = match matches.opt_str("peek") {
             Some(arg) => {
                 match arg.parse::<u16>() {
@@ -218,7 +221,7 @@ Supported commands: help | stop | continue | dump
                 return;
             }
         } else {
-            nes.cpu.pc
+            nes.cpu.pc // Default address if unspecified.
         };
 
         for idx in 0..peek {

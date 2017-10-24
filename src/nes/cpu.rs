@@ -352,8 +352,13 @@ impl CPU {
 
     /// Parse an instruction from memory at the address the program counter
     /// currently points execute it. All instruction logic is in instruction.rs.
+    ///
+    /// This function also returns the number of cycles passed once execution is
+    /// completed. This is useful for the caller to have since it can use this to
+    /// synchronize PPU state.
     pub fn step(&mut self, memory: &mut Memory) -> u16 {
         let instr = Instruction::parse(self.pc as usize, memory);
+
         if self.runtime_options.verbose || self.execution_log.is_some() {
             let raw_fragment = instr.log(self, memory);
 
@@ -363,14 +368,12 @@ impl CPU {
                 log::log("cpu", format!("{}", raw_fragment), &self.runtime_options);
             }
 
-            // Compare the current state of the emulator against a log if one was
-            // provided on the command-line.
+            // Compare the current state of the emulator against the next log
+            // line if a nintendulator log was passed in.
             if let Some(ref mut execution_log) = self.execution_log {
-                // Read the next line from the log.
                 let mut log_fragment = String::new();
                 execution_log.read_line(&mut log_fragment).unwrap();
 
-                // Parse and compare both of the CPU frames.
                 if CPUFrame::parse(raw_fragment.as_str()) != CPUFrame::parse(log_fragment.as_str()) {
                     log::log("error", "FATAL ERROR: Mismatched CPU frames:", &self.runtime_options);
                     log::log("error", format!("Emulator Frame: {}", raw_fragment), &self.runtime_options);
@@ -380,19 +383,12 @@ impl CPU {
             }
         }
 
-        // Execute the instruction located at the current PC.
+        self.cycles = 0;
         instr.execute(self, memory);
 
-        // Save the cycle count of the last instruction execution so it may be
-        // returned after sleeping through the cycles, then reset the cycles and
-        // PPU dots before returning.
-        let old_cycles = self.cycles;
         self.ppu_dots = (self.ppu_dots + (self.cycles * 3)) % 341;
-        self.cycles = 0;
 
-        // Return the number of cycles that was required to execute the
-        // instruction so the PPU can be synchronized.
-        old_cycles
+        return self.cycles;
     }
 
     /// Returns "SET" if the passed boolean is true, otherwise "UNSET". This
@@ -404,21 +400,25 @@ impl CPU {
 
 impl fmt::Display for CPU {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "\nCPU Crash State:").unwrap();
-        writeln!(f, "    Program Counter: {:#X}", self.pc).unwrap();
-        writeln!(f, "    Stack Pointer:   {:#X}", self.sp).unwrap();
-        writeln!(f, "    Accumulator:     {:#X}", self.a).unwrap();
-        writeln!(f, "    X Register:      {:#X}", self.x).unwrap();
-        writeln!(f, "    Y Register:      {:#X}", self.y).unwrap();
         writeln!(f, "").unwrap();
-        writeln!(f, "Status Register: {:#X}", self.p).unwrap();
-        writeln!(f, "    Carry Flag:        {}", CPU::fmt_flag(self.carry_flag_set())).unwrap();
-        writeln!(f, "    Zero Flag:         {}", CPU::fmt_flag(self.zero_flag_set())).unwrap();
-        writeln!(f, "    Interrupt Disable: {}", CPU::fmt_flag(self.interrupt_disable_set())).unwrap();
-        writeln!(f, "    Decimal Mode:      {}", CPU::fmt_flag(self.decimal_mode_set())).unwrap();
-        writeln!(f, "    Break Command:     {}", CPU::fmt_flag(self.break_command_set())).unwrap();
-        writeln!(f, "    Overflow Flag:     {}", CPU::fmt_flag(self.overflow_flag_set())).unwrap();
-        writeln!(f, "    Negative Flag:     {}", CPU::fmt_flag(self.negative_flag_set()))
+        writeln!(f, "===== CPU Crash State =====").unwrap();
+        writeln!(f, "").unwrap();
+        writeln!(f, "Program Counter: {:#X}", self.pc).unwrap();
+        writeln!(f, "Stack Pointer:   {:#X}", self.sp).unwrap();
+        writeln!(f, "Accumulator:     {:#X}", self.a).unwrap();
+        writeln!(f, "X Register:      {:#X}", self.x).unwrap();
+        writeln!(f, "Y Register:      {:#X}", self.y).unwrap();
+
+        writeln!(f, "").unwrap();
+        writeln!(f, "===== Status Register: {:#X} =====", self.p).unwrap();
+        writeln!(f, "").unwrap();
+        writeln!(f, "Carry Flag:        {}", CPU::fmt_flag(self.carry_flag_set())).unwrap();
+        writeln!(f, "Zero Flag:         {}", CPU::fmt_flag(self.zero_flag_set())).unwrap();
+        writeln!(f, "Interrupt Disable: {}", CPU::fmt_flag(self.interrupt_disable_set())).unwrap();
+        writeln!(f, "Decimal Mode:      {}", CPU::fmt_flag(self.decimal_mode_set())).unwrap();
+        writeln!(f, "Break Command:     {}", CPU::fmt_flag(self.break_command_set())).unwrap();
+        writeln!(f, "Overflow Flag:     {}", CPU::fmt_flag(self.overflow_flag_set())).unwrap();
+        writeln!(f, "Negative Flag:     {}", CPU::fmt_flag(self.negative_flag_set()))
     }
 }
 
