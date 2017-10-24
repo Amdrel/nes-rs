@@ -276,38 +276,32 @@ impl Memory {
         self.read_u16_alt(STACK_OFFSET + cpu.sp as usize)
     }
 
-    /// Handles read / write behavior of individual I/O registers and tracks
-    /// their dirty state.
-    fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
-        {
-            // Update the register status before mapping so the PPU knows which
-            // registers were touched after the memory operation. Reads to
-            // registers marked in any written state do not override the written
-            // flag for that register.
-            //
-            // In the event that the PPU register has already been written to
-            // and is being written to again, set the status to WrittenTwice.
-            //
-            // NOTE: Reads may be set via the CPU logging mechanism used when
-            // verbose mode is active when the instruction itself did not
-            // actually read the value. This hopefully should not affect the
-            // accuracy of the CPU -> PPU interop, though this is an unknown for
-            // me right now.
-            let registers_status = &mut self.ppu_ctrl_registers_status;
-            registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
-                 PPURegisterStatus::WrittenTwice
-            } else if registers_status[addr] != PPURegisterStatus::Written && registers_status[addr] != PPURegisterStatus::WrittenTwice {
-                match operation {
-                    MemoryOperation::Read  => PPURegisterStatus::Read,
-                    MemoryOperation::Write => PPURegisterStatus::Written,
-                    MemoryOperation::Nop   => registers_status[addr],
-                }
-            } else {
-                registers_status[addr]
-            };
-        }
+    /// Update the register status so the PPU knows which registers were touched
+    /// after the memory operation. Reads to registers marked in any written
+    /// state do not override the written flag for that register.
+    ///
+    /// In the event that the PPU register has already been written to and is
+    /// being written to again, set the status to WrittenTwice.
+    fn update_ppu_register_status(&mut self, addr: usize, operation: MemoryOperation) {
+        let registers_status = &mut self.ppu_ctrl_registers_status;
+        registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
+                PPURegisterStatus::WrittenTwice
+        } else if registers_status[addr] != PPURegisterStatus::Written && registers_status[addr] != PPURegisterStatus::WrittenTwice {
+            match operation {
+                MemoryOperation::Read  => PPURegisterStatus::Read,
+                MemoryOperation::Write => PPURegisterStatus::Written,
+                MemoryOperation::Nop   => registers_status[addr],
+            }
+        } else {
+            registers_status[addr]
+        };
+    }
 
-        // Map I/O registers to their documented permissions.
+    /// Returns PPU register read/write permissions for use with the I/O
+    /// functions. Register status is also updated depending on the operation.
+    fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+        self.update_ppu_register_status(addr, operation);
+
         let registers = &mut self.ppu_ctrl_registers;
         match addr {
             0 => (registers, addr, false, true),
@@ -322,22 +316,29 @@ impl Memory {
         }
     }
 
-    /// Handles read / write behavior of individual misc registers and tracks
-    /// their dirty state.
-    fn map_misc_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
-        {
-            // Set the dirty status of the mapped misc register.
-            let registers_status = &mut self.misc_ctrl_registers_status;
-            registers_status[addr] = match operation {
-                MemoryOperation::Read  => MiscRegisterStatus::Read,
-                MemoryOperation::Write => MiscRegisterStatus::Written,
-                MemoryOperation::Nop   => registers_status[addr],
-            };
-        }
+    /// Update the register status so the we know which registers were touched
+    /// after the memory operation. Reads to registers marked in any written
+    /// state do not override the written flag for that register.
+    ///
+    /// In the event that the PPU register has already been written to and is
+    /// being written to again, set the status to WrittenTwice.
+    fn update_misc_register_status(&mut self, addr: usize, operation: MemoryOperation) {
+        let registers_status = &mut self.misc_ctrl_registers_status;
+        registers_status[addr] = match operation {
+            MemoryOperation::Read  => MiscRegisterStatus::Read,
+            MemoryOperation::Write => MiscRegisterStatus::Written,
+            MemoryOperation::Nop   => registers_status[addr],
+        };
+    }
 
-        // Map I/O registers to their documented permissions.
+    /// Returns misc register read/write permissions for use with the I/O
+    /// functions. Register status is also updated depending on the operation.
+    fn map_misc_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+        self.update_misc_register_status(addr, operation);
+
+        // FIXME: Double-check permissions on these I/O registers.
         let registers = &mut self.misc_ctrl_registers;
-        match addr { // NOTE: Double-check permissions on these I/O registers.
+        match addr {
             0x14 => (registers, addr, false, true),
             _    => (registers, addr, true, true),
         }
