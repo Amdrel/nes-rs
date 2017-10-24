@@ -257,9 +257,16 @@ impl NES {
                         rl.add_history_entry(&line);
                         tx.send(line).unwrap();
 
-                        // Block until command is run.
+                        // Block until the command is done running or the main
+                        // thread tells us to shutdown.
                         match rx.recv() {
-                            Ok(_) => {},
+                            Ok(code) => {
+                                match code {
+                                    0 => {}, // 0 means the command has run.
+                                    1 => { break }, // 1 is an exit command.
+                                    _ => {},
+                                }
+                            },
                             Err(_) => {
                                 break;
                             },
@@ -281,6 +288,7 @@ impl NES {
                 };
             }
 
+            println!("Saving debugger history...");
             rl.save_history(HISTORY_FILE).unwrap();
         });
     }
