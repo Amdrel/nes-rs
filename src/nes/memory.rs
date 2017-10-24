@@ -253,24 +253,28 @@ impl Memory {
     // Utility functions for managing the stack.
 
     /// Pushes an 8-bit number onto the stack.
+    #[inline(always)]
     pub fn stack_push_u8(&mut self, cpu: &mut CPU, value: u8) {
         self.write_u8(STACK_OFFSET + cpu.sp as usize, value);
         cpu.sp = cpu.sp.wrapping_sub(1);
     }
 
     /// Pops an 8-bit number off the stack.
+    #[inline(always)]
     pub fn stack_pop_u8(&mut self, cpu: &mut CPU) -> u8 {
         cpu.sp = cpu.sp.wrapping_add(1);
         self.read_u8(STACK_OFFSET + cpu.sp as usize)
     }
 
     /// Pushes a 16-bit number (usually an address) onto the stack.
+    #[inline(always)]
     pub fn stack_push_u16(&mut self, cpu: &mut CPU, value: u16) {
         self.write_u16_alt(STACK_OFFSET + cpu.sp as usize, value);
         cpu.sp = cpu.sp.wrapping_sub(2);
     }
 
     /// Pops a 16-bit number (usually an address) off the stack.
+    #[inline(always)]
     pub fn stack_pop_u16(&mut self, cpu: &mut CPU) -> u16 {
         cpu.sp = cpu.sp.wrapping_add(2);
         self.read_u16_alt(STACK_OFFSET + cpu.sp as usize)
@@ -282,6 +286,7 @@ impl Memory {
     ///
     /// In the event that the PPU register has already been written to and is
     /// being written to again, set the status to WrittenTwice.
+    #[inline(always)]
     fn update_ppu_register_status(&mut self, addr: usize, operation: MemoryOperation) {
         let registers_status = &mut self.ppu_ctrl_registers_status;
         registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
@@ -299,6 +304,7 @@ impl Memory {
 
     /// Returns PPU register read/write permissions for use with the I/O
     /// functions. Register status is also updated depending on the operation.
+    #[inline(always)]
     fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         self.update_ppu_register_status(addr, operation);
 
@@ -322,6 +328,7 @@ impl Memory {
     ///
     /// In the event that the PPU register has already been written to and is
     /// being written to again, set the status to WrittenTwice.
+    #[inline(always)]
     fn update_misc_register_status(&mut self, addr: usize, operation: MemoryOperation) {
         let registers_status = &mut self.misc_ctrl_registers_status;
         registers_status[addr] = match operation {
@@ -333,6 +340,7 @@ impl Memory {
 
     /// Returns misc register read/write permissions for use with the I/O
     /// functions. Register status is also updated depending on the operation.
+    #[inline(always)]
     fn map_misc_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
         self.update_misc_register_status(addr, operation);
 
