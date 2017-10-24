@@ -63,9 +63,8 @@ impl Debugger {
                     }
                 }
 
-                // Tell input thread to continue and display prompt.
+                // Tell the input thread to continue and display prompt.
                 if let Err(_) = self.sender.send(0) {
-                    // Receiver was probably destroyed in spin-down.
                 }
             },
             Err(_) => {}, // Ignore empty and disconnect errors.
@@ -152,7 +151,7 @@ This subshell provides access to a few different commands that allow you to
 modify and observe the state of the virtual machine. At the moment there is a
 very limited set of commands and more may be added in the future.
 
-Supported commands: help | stop | continue | dump
+Supported commands: help | exit | stop | continue | dump | objdump
 "
         ).unwrap();
     }
@@ -160,6 +159,11 @@ Supported commands: help | stop | continue | dump
     /// Stops the virtual machine by setting the shutdown flag.
     fn execute_exit(&mut self) {
         self.shutdown = true;
+
+        // Let the input thread know we're shutting things down so it can save
+        // the input history for the next run.
+        if let Err(_) = self.sender.send(1) {
+        }
     }
 
     /// Stops execution of the CPU and PPU to allow the human some time to debug
@@ -266,6 +270,44 @@ Supported commands: help | stop | continue | dump
         let mut opts = Options::new();
         opts.optopt("p", "peek", "how far forward should memory be dumped", "NUMBER");
 
-        unimplemented!();
+        let matches = match opts.parse(&args[1..]) {
+            Ok(m) => m,
+            Err(f) => {
+                writeln!(stderr(), "dump: {}", f).unwrap();
+                writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+                return;
+            },
+        };
+
+        // Peek allows specifying how much information to dump.
+        let peek = match matches.opt_str("peek") {
+            Some(arg) => {
+                match arg.parse::<u16>() {
+                    Ok(p) => p,
+                    Err(e) => {
+                        writeln!(stderr(), "dump: {}", e).unwrap();
+                        writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+                        return;
+                    },
+                }
+            },
+            None => 10,
+        };
+
+        // Parse hex representation of a memory address at free argument if
+        // available, otherwise the address will be the program counter.
+        let addr = if !matches.free.is_empty() {
+            let arg = matches.free[0].clone();
+            if let Some(hex) = arithmetic::hex_to_u16(&arg) {
+                hex
+            } else {
+                writeln!(stderr(), "dump: cannot parse address: {}", arg).unwrap();
+                return;
+            }
+        } else {
+            nes.cpu.pc
+        };
+
+        println!("Got ya good!");
     }
 }
