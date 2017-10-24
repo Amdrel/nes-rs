@@ -31,7 +31,7 @@ pub const OVERFLOW_FLAG:     u8 = 0x40;
 pub const NEGATIVE_FLAG:     u8 = 0x80;
 
 // How long it takes for a cycle to complete.
-const CLOCK_SPEED: f32 = 558.65921787709;
+const CLOCK_SPEED: u32 = 559;
 
 /// This is an implementation of 2A03 processor used in the NES. The 2A03 is
 /// based off the 6502 processor with some minor changes such as having no
@@ -338,7 +338,8 @@ impl CPU {
     /// Sleeps the CPU for an amount of time corresponding to the passed cycles.
     /// Time is determined by multiplying the cycles by the clock speed.
     pub fn sleep(&mut self, cycles: u16) {
-        thread::sleep(Duration::new(0, (CLOCK_SPEED * cycles as f32) as u32));
+        let nanos = CLOCK_SPEED * cycles as u32;
+        thread::sleep(Duration::new(0, nanos));
     }
 
     /// Checks the IRQ status and sets the program counter to the IRQ handler if
