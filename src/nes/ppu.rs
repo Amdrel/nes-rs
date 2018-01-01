@@ -383,6 +383,11 @@ impl PPU {
         panic!("Implement PPUMASK write handling");
     }
 
+    /// FIXME: Make accurate.
+    fn handle_ppu_status(&mut self, index: usize, memory: &mut Memory) {
+        // panic!("Implement PPUSTATUS handling");
+    }
+
     /// Updates the internal OAMADDR registers with data in the I/O register.
     /// FIXME: Make accurate.
     fn handle_oam_addr(&mut self, index: usize, memory: &mut Memory) {
@@ -438,13 +443,17 @@ impl PPU {
     }
 
     /// Checks the status of PPU I/O registers and executes PPU functionality
-    /// depending on their states.
+    /// depending on their states. This is very inefficient right now since every
+    /// handle function is called.
+    ///
+    /// Since the PPU steps 3 times in a row in sync with the CPU, we could
+    /// potentially do these checks left often.
     fn check_ppu_registers(&mut self, memory: &mut Memory) {
         for index in 0x0..0x8 {
             match index {
                 PPUCTRL   => self.handle_ppu_ctrl(index, memory),
                 PPUMASK   => self.handle_ppu_mask(index, memory),
-                PPUSTATUS => {},
+                PPUSTATUS => self.handle_ppu_status(index, memory),
                 OAMADDR   => self.handle_oam_addr(index, memory),
                 OAMDATA   => self.handle_oam_data(index, memory),
                 PPUSCROLL => self.handle_ppu_scroll(index, memory),

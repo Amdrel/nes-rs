@@ -6,6 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use sdl2;
+use sdl2::EventPump;
+use sdl2::render;
+use sdl2::render::Canvas;
+use sdl2::pixels::Color;
+use sdl2::video::Window;
+use sdl2::event::Event;
 use debugger::debugger::Debugger;
 use io::binutils::INESHeader;
 use io::errors::*;
@@ -36,9 +43,13 @@ const HISTORY_FILE: &'static str = ".nes-rs-history.txt";
 pub struct NES {
     pub header: INESHeader,
     pub runtime_options: NESRuntimeOptions,
+
     pub cpu: CPU,
     pub ppu: PPU,
     pub memory: Memory,
+
+    pub canvas: Canvas<Window>,
+    pub event_pump: EventPump,
 }
 
 impl NES {
@@ -95,12 +106,28 @@ impl NES {
             },
         };
 
+        // Create an SDL window that represents the display.
+        let sdl_context = sdl2::init().unwrap();
+        let video_subsystem = sdl_context.video().unwrap();
+        let window = video_subsystem.window("nes-rs", 256, 240)
+            .position_centered()
+            .build()
+            .unwrap();
+
+        // Create a canvas that is scaled up a bit.
+        let mut canvas = window.into_canvas().build().unwrap();
+        canvas.set_draw_color(Color::RGB(255, 0, 0));
+        canvas.clear();
+        canvas.present();
+
         NES {
             header: header,
             cpu: CPU::new(runtime_options.clone(), pc),
             ppu: PPU::new(runtime_options.clone()),
             runtime_options: runtime_options,
             memory: memory,
+            canvas: canvas,
+            event_pump: sdl_context.event_pump().unwrap(),
         }
     }
 
@@ -150,9 +177,19 @@ impl NES {
 
                 // Execute until shutdown signal is received from debugger.
                 let mut debugger = Debugger::new(mtx, rx);
-                while !debugger.step(self) {}
+                while !debugger.step(self) {
+                    let quit = self.poll_sdl_events();
+                    if quit {
+                        break;
+                    }
+                }
             } else {
                 loop {
+                    let quit = self.poll_sdl_events();
+                    if quit {
+                        break;
+                    }
+
                     self.step();
                 }
             }
@@ -186,6 +223,21 @@ impl NES {
             }
             cycles -= 1;
         }
+    }
+
+    /// Polls for SDL events, inparticular the quit one. A boolean is returned
+    /// which if true will stop emulation.
+    fn poll_sdl_events(&mut self) -> bool {
+        for event in self.event_pump.poll_iter() {
+            match event {
+                Event::Quit {..} => {
+                    return true;
+                },
+                _ => {}
+            }
+        }
+
+        return false;
     }
 
     /// Creates a readline loop on another thread and sends commands to the

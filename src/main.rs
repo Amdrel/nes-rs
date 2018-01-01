@@ -12,6 +12,7 @@ extern crate getopts;
 extern crate num;
 extern crate chrono;
 extern crate rustyline;
+extern crate sdl2;
 
 mod debugger;
 mod io;

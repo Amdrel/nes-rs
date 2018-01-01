@@ -10,3 +10,8 @@ getopts = "0.2"
 num = "0.1"
 chrono = "0.3"
 rustyline = "1.0.0"
+
+[dependencies.sdl2]
+version = "0.31"
+default-features = false
+features = ["gfx", "mixer"]
