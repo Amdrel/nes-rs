@@ -88,8 +88,7 @@ impl Debugger {
         return self.shutdown;
     }
 
-    /// Parse a raw input string into a list of arguments and a command. This
-    /// function also maps command names to their respective enums.
+    /// Parse a raw input string into a list of arguments and a command.
     fn interpret(&self, input: String) -> Option<CommandWithArguments> {
         let mut stderr = io::stderr();
         let args = match parser::input_to_arguments(input) {
@@ -141,8 +140,8 @@ impl Debugger {
         match command.command {
             Command::Help => self.execute_help(),
             Command::Exit => self.execute_exit(),
-            Command::Stop => self.execute_stop(nes),
-            Command::Continue => self.execute_continue(nes),
+            Command::Stop => self.execute_stop(),
+            Command::Continue => self.execute_continue(),
             Command::Dump => self.execute_dump(nes, &command.args),
             Command::ObjDump => self.execute_objdump(nes, &command.args),
         };
@@ -169,19 +168,28 @@ Supported commands: help | stop | continue | dump
 
     /// Stops execution of the CPU and PPU to allow the human some time to debug
     /// a problem or stare at hex codes all day to look like a l33t haxor.
-    fn execute_stop(&mut self, nes: &mut NES) {
-        log::log("debugger", "Stopping execution now...", &nes.runtime_options);
-        self.stepping = false;
+    fn execute_stop(&mut self) {
+        if self.stepping {
+            println!("Stopping execution now...");
+            self.stepping = false;
+        } else {
+            println!("Execution is already stopped.");
+        }
     }
 
     /// Starts execution if it's stopped.
-    fn execute_continue(&mut self, nes: &mut NES) {
-        log::log("debugger", "Starting execution now...", &nes.runtime_options);
-        self.stepping = true;
+    fn execute_continue(&mut self) {
+        if self.stepping {
+            println!("Execution is already happening.");
+        } else {
+            println!("Starting execution now...");
+            self.stepping = true;
+        }
     }
 
-    /// Allows dumping memory or program code at a specified memory address. All
-    /// values are assumed to be 8-bit words.
+    /// Allows dumping memory or program code at a specified memory address. A
+    /// custom peek value can be specified which is the number of 16-byte
+    /// segments to seek forward with during the dump.
     fn execute_dump(&mut self, nes: &mut NES, args: &Vec<String>) {
         const USAGE: &'static str = "Usage: dump [OPTION]... [ADDRESS]";
 
@@ -225,18 +233,21 @@ Supported commands: help | stop | continue | dump
         };
 
         for idx in 0..peek {
-            let peek_offset = addr.wrapping_add(idx * 16);
+            let peek_amount = idx.wrapping_mul(16);
+            let peek_offset = addr.wrapping_add(peek_amount);
             let mut bytes: [u8; 16] = [0; 16];
+
+            // Read 16 bytes starting from the current offset. These will be
+            // displayed to stdout in a hexdump-like format later.
             for offset in 0..16 {
                 let current_addr = (peek_offset.wrapping_add(offset)) as usize;
                 let value = nes.memory.read_u8_unrestricted(current_addr);
                 bytes[offset as usize] = value;
             }
 
-            // Print the memory address for for the first byte in the line.
+            // Print the memory address for for the first byte in the line and 2
+            // 8-bit bytes.
             print!("{:04x}  ", peek_offset);
-
-            // Print out 2 lines of 8-bit bytes showing 8 bytes each.
             for offset in 0..8 {
                 print!("{:02x} ", bytes[offset]);
             }
@@ -245,7 +256,8 @@ Supported commands: help | stop | continue | dump
                 print!("{:02x} ", bytes[offset + 8]);
             }
 
-            // Print out an ASCII representation of the bytes.
+            // Print out an ASCII representation of the bytes. If the byte is
+            // not safe to print in a terminal just display a dot.
             print!(" ");
             for offset in 0..16 {
                 let value = bytes[offset];
@@ -262,7 +274,10 @@ Supported commands: help | stop | continue | dump
         }
     }
 
-    /// Similar to dump, but will interpret data as instructions.
+    /// Similar to dump, but will interpret data as instructions. Since
+    /// instructions can be of varying lengths, peek works differently for
+    /// objdump than dump since peek will be the number of instructions to search
+    /// for rather than the number of 16-bit words.
     fn execute_objdump(&mut self, nes: &mut NES, args: &Vec<String>) {
         const USAGE: &'static str = "Usage: objdump [OPTION]... [ADDRESS]";
 
