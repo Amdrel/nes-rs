@@ -133,7 +133,7 @@ impl NES {
 
     /// Starts the execution loop and starts executing PRG-ROM.
     pub fn run(&mut self) -> i32 {
-        // Put the CPU into testing mode if a cpu log was passed in the runtime
+        // Put the CPU into testing mode if a CPU log was passed in the runtime
         // options. This is done before execution so the log and the CPU state
         // are kept in sync.
         match self.runtime_options.cpu_log {
@@ -189,7 +189,6 @@ impl NES {
                     if quit {
                         break;
                     }
-
                     self.step();
                 }
             }

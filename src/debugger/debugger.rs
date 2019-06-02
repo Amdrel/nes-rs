@@ -8,7 +8,6 @@
 
 use debugger::parser;
 use getopts::Options;
-use io::log;
 use nes::nes::NES;
 use std::io::{self, Write, stderr, stdout};
 use std::sync::mpsc::{SyncSender, Receiver};
@@ -327,6 +326,6 @@ Supported commands: help | exit | stop | continue | dump | objdump
             nes.cpu.pc
         };
 
-        println!("Got ya good!");
+        println!("Unimplemented... for now.");
     }
 }

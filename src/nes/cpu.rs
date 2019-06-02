@@ -210,13 +210,13 @@ impl CPU {
         self.p |= NEGATIVE_FLAG;
     }
 
-    /// Unsets the carry flag in the status register.
+    /// Un-sets the carry flag in the status register.
     #[inline(always)]
     pub fn unset_carry_flag(&mut self) {
         self.p &= !CARRY_FLAG;
     }
 
-    /// Unsets the zero flag in the status register.
+    /// Un-sets the zero flag in the status register.
     #[inline(always)]
     pub fn unset_zero_flag(&mut self) {
         self.p &= !ZERO_FLAG;
@@ -235,19 +235,19 @@ impl CPU {
         self.p &= !DECIMAL_MODE;
     }
 
-    /// Unsets the break command flag in the status register.
+    /// Un-sets the break command flag in the status register.
     #[inline(always)]
     pub fn unset_break_command(&mut self) {
         self.p &= !BREAK_COMMAND;
     }
 
-    /// Unsets the overflow flag in the status register.
+    /// Un-sets the overflow flag in the status register.
     #[inline(always)]
     pub fn unset_overflow_flag(&mut self) {
         self.p &= !OVERFLOW_FLAG;
     }
 
-    /// Unsets the negative flag in the status register.
+    /// Un-sets the negative flag in the status register.
     #[inline(always)]
     pub fn unset_negative_flag(&mut self) {
         self.p &= !NEGATIVE_FLAG;
@@ -370,7 +370,7 @@ impl CPU {
             }
 
             // Compare the current state of the emulator against the next log
-            // line if a nintendulator log was passed in.
+            // line if a Nintendulator log was passed in.
             if let Some(ref mut execution_log) = self.execution_log {
                 let mut log_fragment = String::new();
                 execution_log.read_line(&mut log_fragment).unwrap();

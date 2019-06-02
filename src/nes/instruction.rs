@@ -40,7 +40,7 @@ impl Instruction {
     /// Disassembles the instruction into human readable assembly. Each opcode is
     /// mapped to a human readable name and a pretty print function. The pretty
     /// print function mimic Nintendulator and are used during CPU log
-    /// comparisions.
+    /// comparisons.
     pub fn disassemble(&self, cpu: &CPU, memory: &mut Memory) -> String {
         let opcode = self.opcode();
         let len = opcode_len(&opcode);
