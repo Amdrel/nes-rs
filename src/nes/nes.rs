@@ -6,34 +6,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use sdl2;
-use sdl2::EventPump;
-use sdl2::render;
-use sdl2::render::Canvas;
-use sdl2::pixels::Color;
-use sdl2::video::Window;
-use sdl2::event::Event;
 use debugger::debugger::Debugger;
 use io::binutils::INESHeader;
 use io::errors::*;
 use io::log;
 use nes::cpu::CPU;
 use nes::ppu::PPU;
-use std::fs::File;
-use std::io::{self, stdin, Read, Write, BufReader, BufRead};
-use std::sync::mpsc::{self, SyncSender, Receiver};
-use std::{thread, panic};
-use std::time::Duration;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use sdl2;
+use sdl2::event::Event;
+use sdl2::pixels::Color;
+use sdl2::render;
+use sdl2::render::Canvas;
+use sdl2::video::Window;
+use sdl2::EventPump;
+use std::fs::File;
+use std::io::{self, stdin, BufRead, BufReader, Read, Write};
+use std::sync::mpsc::{self, Receiver, SyncSender};
+use std::time::Duration;
+use std::{panic, thread};
 
 use nes::memory::{
-    Memory,
-    TRAINER_START,
-    TRAINER_SIZE,
-    PRG_ROM_1_START,
-    PRG_ROM_2_START,
-    PRG_ROM_SIZE
+    Memory, PRG_ROM_1_START, PRG_ROM_2_START, PRG_ROM_SIZE, TRAINER_SIZE, TRAINER_START,
 };
 
 const HISTORY_FILE: &'static str = ".nes-rs-history.txt";
@@ -61,8 +56,16 @@ impl NES {
         let mut cursor: usize = 0x10;
 
         // Spew out some useful metadata about the rom when verbose is on.
-        log::log("init", format!("Using {:?} mapper", header.mapper()), &runtime_options);
-        log::log("init", format!("Using {:?} mirroring", header.mirror_type()), &runtime_options);
+        log::log(
+            "init",
+            format!("Using {:?} mapper", header.mapper()),
+            &runtime_options,
+        );
+        log::log(
+            "init",
+            format!("Using {:?} mirroring", header.mirror_type()),
+            &runtime_options,
+        );
 
         // Copy the trainer data to 0x7000 if it exists and adjust the cursor
         // size to accommodate. Trainer data will offset the location of ROM
@@ -87,13 +90,25 @@ impl NES {
             log::log("init", "2 PRG-ROM banks detected", &runtime_options);
             let prg_rom_1_addr = cursor;
             let prg_rom_2_addr = cursor + PRG_ROM_SIZE;
-            memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
-            memory.memdump(PRG_ROM_2_START, &rom[prg_rom_2_addr..prg_rom_2_addr + PRG_ROM_SIZE]);
+            memory.memdump(
+                PRG_ROM_1_START,
+                &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE],
+            );
+            memory.memdump(
+                PRG_ROM_2_START,
+                &rom[prg_rom_2_addr..prg_rom_2_addr + PRG_ROM_SIZE],
+            );
         } else {
             log::log("init", "1 PRG-ROM bank detected", &runtime_options);
             let prg_rom_1_addr = cursor;
-            memory.memdump(PRG_ROM_1_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
-            memory.memdump(PRG_ROM_2_START, &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE]);
+            memory.memdump(
+                PRG_ROM_1_START,
+                &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE],
+            );
+            memory.memdump(
+                PRG_ROM_2_START,
+                &rom[prg_rom_1_addr..prg_rom_1_addr + PRG_ROM_SIZE],
+            );
         }
 
         // Set the initial program counter to the address stored at 0xFFFC (this
@@ -101,15 +116,14 @@ impl NES {
         // specified on the command-line, use that one instead.
         let pc = match runtime_options.program_counter {
             Some(pc) => pc,
-            None => {
-                memory.read_u16(0xFFFC)
-            },
+            None => memory.read_u16(0xFFFC),
         };
 
         // Create an SDL window that represents the display.
         let sdl_context = sdl2::init().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
-        let window = video_subsystem.window("nes-rs", 256, 240)
+        let window = video_subsystem
+            .window("nes-rs", 256, 240)
             .position_centered()
             .build()
             .unwrap();
@@ -137,19 +151,15 @@ impl NES {
         // options. This is done before execution so the log and the CPU state
         // are kept in sync.
         match self.runtime_options.cpu_log {
-            Some(ref filename) => {
-                match File::open(filename) {
-                    Ok(f) => {
-                        self.cpu.begin_testing(BufReader::new(f))
-                    },
-                    Err(e) => {
-                        let mut stderr = io::stderr();
-                        writeln!(stderr, "nes-rs: cannot open {}: {}", filename, e).unwrap();
-                        return EXIT_CPU_LOG_NOT_FOUND;
-                    },
+            Some(ref filename) => match File::open(filename) {
+                Ok(f) => self.cpu.begin_testing(BufReader::new(f)),
+                Err(e) => {
+                    let mut stderr = io::stderr();
+                    writeln!(stderr, "nes-rs: cannot open {}: {}", filename, e).unwrap();
+                    return EXIT_CPU_LOG_NOT_FOUND;
                 }
             },
-            None => {},
+            None => {}
         }
 
         // Start cycling the CPU and PPU and add a panic catcher so crash
@@ -201,7 +211,7 @@ impl NES {
             Ok(_) => {
                 println!("Shutting down nes-rs, happy emulating!");
                 return EXIT_SUCCESS; // Success exit code.
-            },
+            }
             Err(_) => {
                 thread::sleep(Duration::from_millis(16));
                 println!("{}", self.cpu);
@@ -217,7 +227,8 @@ impl NES {
         self.cpu.sleep(cycles);
 
         while cycles > 0 {
-            for _ in 0..3 { // *Should* unroll.
+            for _ in 0..3 {
+                // *Should* unroll.
                 self.ppu.step(&mut self.memory);
             }
             cycles -= 1;
@@ -229,9 +240,9 @@ impl NES {
     fn poll_sdl_events(&mut self) -> bool {
         for event in self.event_pump.poll_iter() {
             match event {
-                Event::Quit {..} => {
+                Event::Quit { .. } => {
                     return true;
-                },
+                }
                 _ => {}
             }
         }
@@ -261,29 +272,29 @@ impl NES {
                         match rx.recv() {
                             Ok(code) => {
                                 match code {
-                                    0 => {}, // 0 means the command has run.
-                                    1 => { break }, // 1 is an exit command.
-                                    _ => {},
+                                    0 => {}     // 0 means the command has run.
+                                    1 => break, // 1 is an exit command.
+                                    _ => {}
                                 }
-                            },
+                            }
                             Err(_) => {
                                 break;
-                            },
+                            }
                         }
-                    },
+                    }
                     Err(ReadlineError::Interrupted) => {
                         tx.send("exit".to_string()).unwrap();
                         break;
-                    },
+                    }
                     Err(ReadlineError::Eof) => {
                         tx.send("exit".to_string()).unwrap();
                         break;
-                    },
+                    }
                     Err(err) => {
                         println!("Error: {:?}", err);
                         tx.send("exit".to_string()).unwrap();
                         break;
-                    },
+                    }
                 };
             }
 
@@ -297,7 +308,7 @@ impl NES {
 #[derive(Clone, Debug)]
 pub struct NESRuntimeOptions {
     pub program_counter: Option<u16>,
-    pub cpu_log:         Option<String>,
-    pub verbose:         bool,
-    pub debugging:       bool,
+    pub cpu_log: Option<String>,
+    pub verbose: bool,
+    pub debugging: bool,
 }

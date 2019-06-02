@@ -9,8 +9,8 @@
 use debugger::parser;
 use getopts::Options;
 use nes::nes::NES;
-use std::io::{self, Write, stderr, stdout};
-use std::sync::mpsc::{SyncSender, Receiver};
+use std::io::{self, stderr, stdout, Write};
+use std::sync::mpsc::{Receiver, SyncSender};
 use std::thread;
 use std::time::Duration;
 use utils::arithmetic;
@@ -31,7 +31,7 @@ struct CommandWithArguments {
 }
 
 pub struct Debugger {
-    sender:   SyncSender<u8>,
+    sender: SyncSender<u8>,
     receiver: Receiver<String>,
     stepping: bool,
     shutdown: bool,
@@ -69,10 +69,9 @@ impl Debugger {
                 // Readline won't show a prompt or accept input until this code
                 // is received so the prompt always shows after output from the
                 // executed debugger command is done being shown.
-                if let Err(_) = self.sender.send(0) {
-                }
-            },
-            Err(_) => {}, // Ignore empty and disconnect errors.
+                if let Err(_) = self.sender.send(0) {}
+            }
+            Err(_) => {} // Ignore empty and disconnect errors.
         };
 
         // If the debugger is in stepping mode, continue execution like normal,
@@ -95,7 +94,7 @@ impl Debugger {
             Err(e) => {
                 writeln!(stderr, "nes-rs: {}", e).unwrap();
                 return None;
-            },
+            }
         };
 
         let command = {
@@ -108,21 +107,21 @@ impl Debugger {
             // Map command strings to the command enum type.
             match raw_command.to_lowercase().as_str() {
                 // Full commands.
-                "help"     => Command::Help,
-                "exit"     => Command::Exit,
-                "stop"     => Command::Stop,
+                "help" => Command::Help,
+                "exit" => Command::Exit,
+                "stop" => Command::Stop,
                 "continue" => Command::Continue,
-                "dump"     => Command::Dump,
-                "objdump"  => Command::ObjDump,
+                "dump" => Command::Dump,
+                "objdump" => Command::ObjDump,
                 // Aliases.
-                "s"  => Command::Stop,
-                "c"  => Command::Continue,
-                "d"  => Command::Dump,
+                "s" => Command::Stop,
+                "c" => Command::Continue,
+                "d" => Command::Dump,
                 "od" => Command::ObjDump,
                 // Unknown command.
                 _ => {
                     return None;
-                },
+                }
             }
         };
 
@@ -148,7 +147,9 @@ impl Debugger {
 
     /// Shows friendly help text for information about using the debugger.
     fn execute_help(&self) {
-        writeln!(stderr(), "
+        writeln!(
+            stderr(),
+            "
 Welcome to the nes-rs debugger!
 
 This subshell provides access to a few different commands that allow you to
@@ -157,7 +158,8 @@ very limited set of commands and more may be added in the future.
 
 Supported commands: help | exit | stop | continue | dump | objdump
 "
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     /// Stops the virtual machine by setting the shutdown flag.
@@ -166,8 +168,7 @@ Supported commands: help | exit | stop | continue | dump | objdump
 
         // Let the input thread know we're shutting things down so it can save
         // the input history for the next run.
-        if let Err(_) = self.sender.send(1) {
-        }
+        if let Err(_) = self.sender.send(1) {}
     }
 
     /// Stops execution of the CPU and PPU to allow the human some time to debug
@@ -198,7 +199,12 @@ Supported commands: help | exit | stop | continue | dump | objdump
         const USAGE: &'static str = "Usage: dump [OPTION]... [ADDRESS]";
 
         let mut opts = Options::new();
-        opts.optopt("p", "peek", "how far forward should memory be dumped", "NUMBER");
+        opts.optopt(
+            "p",
+            "peek",
+            "how far forward should memory be dumped",
+            "NUMBER",
+        );
 
         let matches = match opts.parse(&args[1..]) {
             Ok(m) => m,
@@ -206,17 +212,15 @@ Supported commands: help | exit | stop | continue | dump | objdump
                 writeln!(stderr(), "dump: {}", f).unwrap();
                 writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
                 return;
-            },
+            }
         };
         let peek = match matches.opt_str("peek") {
-            Some(arg) => {
-                match arg.parse::<u16>() {
-                    Ok(p) => p,
-                    Err(e) => {
-                        writeln!(stderr(), "dump: {}", e).unwrap();
-                        writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
-                        return;
-                    },
+            Some(arg) => match arg.parse::<u16>() {
+                Ok(p) => p,
+                Err(e) => {
+                    writeln!(stderr(), "dump: {}", e).unwrap();
+                    writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+                    return;
                 }
             },
             None => 10,
@@ -286,7 +290,12 @@ Supported commands: help | exit | stop | continue | dump | objdump
         const USAGE: &'static str = "Usage: objdump [OPTION]... [ADDRESS]";
 
         let mut opts = Options::new();
-        opts.optopt("p", "peek", "how far forward should memory be dumped", "NUMBER");
+        opts.optopt(
+            "p",
+            "peek",
+            "how far forward should memory be dumped",
+            "NUMBER",
+        );
 
         let matches = match opts.parse(&args[1..]) {
             Ok(m) => m,
@@ -294,19 +303,17 @@ Supported commands: help | exit | stop | continue | dump | objdump
                 writeln!(stderr(), "dump: {}", f).unwrap();
                 writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
                 return;
-            },
+            }
         };
 
         // Peek allows specifying how much information to dump.
         let peek = match matches.opt_str("peek") {
-            Some(arg) => {
-                match arg.parse::<u16>() {
-                    Ok(p) => p,
-                    Err(e) => {
-                        writeln!(stderr(), "dump: {}", e).unwrap();
-                        writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
-                        return;
-                    },
+            Some(arg) => match arg.parse::<u16>() {
+                Ok(p) => p,
+                Err(e) => {
+                    writeln!(stderr(), "dump: {}", e).unwrap();
+                    writeln!(stderr(), "{}", opts.usage(USAGE)).unwrap();
+                    return;
                 }
             },
             None => 10,

@@ -22,13 +22,13 @@ use std::u8;
 use utils::arithmetic;
 
 // Flag constants that allow easy bitwise getting and setting of flag values.
-pub const CARRY_FLAG:        u8 = 0x1;
-pub const ZERO_FLAG:         u8 = 0x2;
+pub const CARRY_FLAG: u8 = 0x1;
+pub const ZERO_FLAG: u8 = 0x2;
 pub const INTERRUPT_DISABLE: u8 = 0x4;
-pub const DECIMAL_MODE:      u8 = 0x8;
-pub const BREAK_COMMAND:     u8 = 0x10;
-pub const OVERFLOW_FLAG:     u8 = 0x40;
-pub const NEGATIVE_FLAG:     u8 = 0x80;
+pub const DECIMAL_MODE: u8 = 0x8;
+pub const BREAK_COMMAND: u8 = 0x10;
+pub const OVERFLOW_FLAG: u8 = 0x40;
+pub const NEGATIVE_FLAG: u8 = 0x80;
 
 // How long it takes for a cycle to complete.
 const CLOCK_SPEED: u32 = 559;
@@ -375,10 +375,23 @@ impl CPU {
                 let mut log_fragment = String::new();
                 execution_log.read_line(&mut log_fragment).unwrap();
 
-                if CPUFrame::parse(raw_fragment.as_str()) != CPUFrame::parse(log_fragment.as_str()) {
-                    log::log("error", "FATAL ERROR: Mismatched CPU frames:", &self.runtime_options);
-                    log::log("error", format!("Emulator Frame: {}", raw_fragment), &self.runtime_options);
-                    log::log("error", format!("Log Frame:      {}", log_fragment), &self.runtime_options);
+                if CPUFrame::parse(raw_fragment.as_str()) != CPUFrame::parse(log_fragment.as_str())
+                {
+                    log::log(
+                        "error",
+                        "FATAL ERROR: Mismatched CPU frames:",
+                        &self.runtime_options,
+                    );
+                    log::log(
+                        "error",
+                        format!("Emulator Frame: {}", raw_fragment),
+                        &self.runtime_options,
+                    );
+                    log::log(
+                        "error",
+                        format!("Log Frame:      {}", log_fragment),
+                        &self.runtime_options,
+                    );
                     panic!("Mismatched CPU frames");
                 }
             }
@@ -395,7 +408,11 @@ impl CPU {
     /// Returns "SET" if the passed boolean is true, otherwise "UNSET". This
     /// function is used to display flags when the CPU crashes.
     fn fmt_flag(flag: bool) -> &'static str {
-        if flag { "SET" } else { "UNSET" }
+        if flag {
+            "SET"
+        } else {
+            "UNSET"
+        }
     }
 }
 
@@ -413,13 +430,47 @@ impl fmt::Display for CPU {
         writeln!(f, "").unwrap();
         writeln!(f, "===== Status Register: {:#X} =====", self.p).unwrap();
         writeln!(f, "").unwrap();
-        writeln!(f, "Carry Flag:        {}", CPU::fmt_flag(self.carry_flag_set())).unwrap();
-        writeln!(f, "Zero Flag:         {}", CPU::fmt_flag(self.zero_flag_set())).unwrap();
-        writeln!(f, "Interrupt Disable: {}", CPU::fmt_flag(self.interrupt_disable_set())).unwrap();
-        writeln!(f, "Decimal Mode:      {}", CPU::fmt_flag(self.decimal_mode_set())).unwrap();
-        writeln!(f, "Break Command:     {}", CPU::fmt_flag(self.break_command_set())).unwrap();
-        writeln!(f, "Overflow Flag:     {}", CPU::fmt_flag(self.overflow_flag_set())).unwrap();
-        writeln!(f, "Negative Flag:     {}", CPU::fmt_flag(self.negative_flag_set()))
+        writeln!(
+            f,
+            "Carry Flag:        {}",
+            CPU::fmt_flag(self.carry_flag_set())
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "Zero Flag:         {}",
+            CPU::fmt_flag(self.zero_flag_set())
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "Interrupt Disable: {}",
+            CPU::fmt_flag(self.interrupt_disable_set())
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "Decimal Mode:      {}",
+            CPU::fmt_flag(self.decimal_mode_set())
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "Break Command:     {}",
+            CPU::fmt_flag(self.break_command_set())
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "Overflow Flag:     {}",
+            CPU::fmt_flag(self.overflow_flag_set())
+        )
+        .unwrap();
+        writeln!(
+            f,
+            "Negative Flag:     {}",
+            CPU::fmt_flag(self.negative_flag_set())
+        )
     }
 }
 
@@ -447,17 +498,18 @@ impl CPUFrame {
         let instr = Instruction(
             CPUFrame::extract_word(&frame[6..8]),
             CPUFrame::extract_word(&frame[9..11]),
-            CPUFrame::extract_word(&frame[12..14]));
+            CPUFrame::extract_word(&frame[12..14]),
+        );
 
         Ok(CPUFrame {
             instruction: instr,
             disassembly: String::from(&frame[16..46]),
-            pc:     try!(u16::from_str_radix(&frame[0..4], 16)),
-            a:      try!(u8::from_str_radix(&frame[50..52], 16)),
-            x:      try!(u8::from_str_radix(&frame[55..57], 16)),
-            y:      try!(u8::from_str_radix(&frame[60..62], 16)),
-            p:      try!(u8::from_str_radix(&frame[65..67], 16)),
-            sp:     try!(u8::from_str_radix(&frame[71..73], 16)),
+            pc: try!(u16::from_str_radix(&frame[0..4], 16)),
+            a: try!(u8::from_str_radix(&frame[50..52], 16)),
+            x: try!(u8::from_str_radix(&frame[55..57], 16)),
+            y: try!(u8::from_str_radix(&frame[60..62], 16)),
+            p: try!(u8::from_str_radix(&frame[65..67], 16)),
+            sp: try!(u8::from_str_radix(&frame[71..73], 16)),
             cycles: try!(u16::from_str_radix(&frame[78..81].trim(), 10)),
         })
     }
