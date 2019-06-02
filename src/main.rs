@@ -6,11 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use] extern crate enum_primitive;
+#[macro_use]
+extern crate enum_primitive;
 extern crate byteorder;
+extern crate chrono;
 extern crate getopts;
 extern crate num;
-extern crate chrono;
 extern crate rustyline;
 extern crate sdl2;
 
@@ -22,11 +23,11 @@ mod utils;
 use getopts::Options;
 use io::binutils::INESHeader;
 use io::errors::*;
-use utils::arithmetic;
-use nes::nes::NES;
 use nes::nes::NESRuntimeOptions;
+use nes::nes::NES;
 use std::env;
-use std::io::{Write, stderr};
+use std::io::{stderr, Write};
+use utils::arithmetic;
 
 /// Prints the application name alongside the cargo version.
 fn print_version() {
@@ -39,10 +40,14 @@ fn print_usage(opts: Options, reason: Option<&str>) {
     match reason {
         Some(r) => {
             writeln!(stderr, "{}", r).unwrap();
-        },
+        }
         None => {}
     }
-    writeln!(stderr, "nes-rs is an incomplete NES emulator written in Rust.").unwrap();
+    writeln!(
+        stderr,
+        "nes-rs is an incomplete NES emulator written in Rust."
+    )
+    .unwrap();
     writeln!(stderr, "").unwrap();
     writeln!(stderr, "{}", opts.usage("Usage: nes-rs [OPTION]... [FILE]")).unwrap();
     writeln!(stderr, "To contribute or report bugs, please see:").unwrap();
@@ -60,7 +65,12 @@ fn init() -> i32 {
     // rules defined against the option object.
     let mut opts = Options::new();
     opts.optopt("t", "test", "test the emulator against a CPU log", "[FILE]");
-    opts.optopt("p", "program-counter", "set the initial program counter to a specified address", "[HEX]");
+    opts.optopt(
+        "p",
+        "program-counter",
+        "set the initial program counter to a specified address",
+        "[HEX]",
+    );
     opts.optflag("v", "verbose", "display CPU frame information");
     opts.optflag("", "version", "print version information");
     opts.optflag("h", "help", "print this message");
@@ -71,18 +81,18 @@ fn init() -> i32 {
         Err(f) => {
             println!("{}", f.to_string());
             print_usage(opts, None);
-            return EXIT_FAILURE
-        },
+            return EXIT_FAILURE;
+        }
     };
 
     // Handle flag based arguments.
     if matches.opt_present("version") {
         print_version();
-        return EXIT_SUCCESS
+        return EXIT_SUCCESS;
     }
     if matches.opt_present("help") {
         print_usage(opts, None);
-        return EXIT_SUCCESS
+        return EXIT_SUCCESS;
     }
 
     // Get the ROM filename from the first free argument and read the ROM into
@@ -91,14 +101,14 @@ fn init() -> i32 {
         matches.free[0].clone()
     } else {
         print_usage(opts, Some("nes-rs: no rom passed, cannot start emulation"));
-        return EXIT_FAILURE
+        return EXIT_FAILURE;
     };
     let rom = match io::binutils::read_bin(&rom_file_name) {
         Ok(rom) => rom,
         Err(e) => {
             let mut stderr = std::io::stderr();
             writeln!(stderr, "nes-rs: cannot open {}: {}", rom_file_name, e).unwrap();
-            return e.raw_os_error().unwrap()
+            return e.raw_os_error().unwrap();
         }
     };
 
@@ -111,7 +121,7 @@ fn init() -> i32 {
         Err(e) => {
             let mut stderr = std::io::stderr();
             writeln!(stderr, "nes-rs: cannot parse {}: {}", rom_file_name, e).unwrap();
-            return EXIT_INVALID_ROM
+            return EXIT_INVALID_ROM;
         }
     };
 
@@ -133,9 +143,9 @@ fn init() -> i32 {
     // panic in the CPU or other emulated hardware.
     let runtime_options = NESRuntimeOptions {
         program_counter: program_counter,
-        cpu_log:         matches.opt_str("test"),
-        verbose:         matches.opt_present("verbose"),
-        debugging:       matches.opt_present("debug"),
+        cpu_log: matches.opt_str("test"),
+        verbose: matches.opt_present("verbose"),
+        debugging: matches.opt_present("debug"),
     };
     let mut nes = NES::new(rom, header, runtime_options);
     nes.run()

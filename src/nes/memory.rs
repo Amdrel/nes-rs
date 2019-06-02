@@ -12,36 +12,36 @@ use std::io::Cursor;
 
 // Memory partition sizes (physical).
 // TODO: Calculate based on ranges below.
-pub const RAM_SIZE:                 usize = 0x800;
-pub const PPU_CTRL_REGISTERS_SIZE:  usize = 0x8;
+pub const RAM_SIZE: usize = 0x800;
+pub const PPU_CTRL_REGISTERS_SIZE: usize = 0x8;
 pub const MISC_CTRL_REGISTERS_SIZE: usize = 0x20;
-pub const EXPANSION_ROM_SIZE:       usize = 0x1FE0;
-pub const SRAM_SIZE:                usize = 0x2000;
-pub const PRG_ROM_SIZE:             usize = 0x4000;
+pub const EXPANSION_ROM_SIZE: usize = 0x1FE0;
+pub const SRAM_SIZE: usize = 0x2000;
+pub const PRG_ROM_SIZE: usize = 0x4000;
 
 // Partitioned virtual memory map bounds.
-pub const RAM_START_ADDR:                  usize = 0x0;
-pub const RAM_END_ADDR:                    usize = 0x7FF;
-pub const RAM_MIRROR_START:                usize = 0x800;
-pub const RAM_MIRROR_END:                  usize = 0x1FFF;
-pub const PPU_CTRL_REGISTERS_START:        usize = 0x2000;
-pub const PPU_CTRL_REGISTERS_END:          usize = 0x2007;
+pub const RAM_START_ADDR: usize = 0x0;
+pub const RAM_END_ADDR: usize = 0x7FF;
+pub const RAM_MIRROR_START: usize = 0x800;
+pub const RAM_MIRROR_END: usize = 0x1FFF;
+pub const PPU_CTRL_REGISTERS_START: usize = 0x2000;
+pub const PPU_CTRL_REGISTERS_END: usize = 0x2007;
 pub const PPU_CTRL_REGISTERS_MIRROR_START: usize = 0x2008;
-pub const PPU_CTRL_REGISTERS_MIRROR_END:   usize = 0x3FFF;
-pub const MISC_CTRL_REGISTERS_START:       usize = 0x4000;
-pub const MISC_CTRL_REGISTERS_END:         usize = 0x401F;
-pub const EXPANSION_ROM_START:             usize = 0x4020;
-pub const EXPANSION_ROM_END:               usize = 0x5FFF;
-pub const SRAM_START:                      usize = 0x6000;
-pub const SRAM_END:                        usize = 0x7FFF;
-pub const PRG_ROM_1_START:                 usize = 0x8000;
-pub const PRG_ROM_1_END:                   usize = 0xBFFF;
-pub const PRG_ROM_2_START:                 usize = 0xC000;
-pub const PRG_ROM_2_END:                   usize = 0xFFFF;
+pub const PPU_CTRL_REGISTERS_MIRROR_END: usize = 0x3FFF;
+pub const MISC_CTRL_REGISTERS_START: usize = 0x4000;
+pub const MISC_CTRL_REGISTERS_END: usize = 0x401F;
+pub const EXPANSION_ROM_START: usize = 0x4020;
+pub const EXPANSION_ROM_END: usize = 0x5FFF;
+pub const SRAM_START: usize = 0x6000;
+pub const SRAM_END: usize = 0x7FFF;
+pub const PRG_ROM_1_START: usize = 0x8000;
+pub const PRG_ROM_1_END: usize = 0xBFFF;
+pub const PRG_ROM_2_START: usize = 0xC000;
+pub const PRG_ROM_2_END: usize = 0xFFFF;
 
 // Constants for additional structures.
 pub const TRAINER_START: usize = 0x7000;
-pub const TRAINER_SIZE:  usize = 512;
+pub const TRAINER_SIZE: usize = 512;
 
 // Location of the DMA register for copying sprite data to the PPU.
 pub const DMA_REGISTER: usize = 0x4014;
@@ -104,13 +104,12 @@ pub struct Memory {
     pub misc_ctrl_registers_status: [MiscRegisterStatus; MISC_CTRL_REGISTERS_SIZE],
 
     // TODO: Add ring buffer for double write register values.
-
     expansion_rom: [u8; EXPANSION_ROM_SIZE],
     sram: [u8; SRAM_SIZE],
 
     // Read-only ROM which contains executable code and assets.
     prg_rom_1: [u8; PRG_ROM_SIZE],
-    prg_rom_2: [u8; PRG_ROM_SIZE]
+    prg_rom_2: [u8; PRG_ROM_SIZE],
 }
 
 impl Memory {
@@ -132,9 +131,9 @@ impl Memory {
     /// Reads an unsigned 8-bit byte value located at the given virtual address.
     #[inline(always)]
     pub fn read_u8(&mut self, addr: usize) -> u8 {
-        let (bank, idx, readable, _) = self.map(addr, MemoryOperation::Read);
-        if readable {
-            bank[idx]
+        let mapping_result = self.map(addr, MemoryOperation::Read);
+        if mapping_result.readable {
+            mapping_result.bank[mapping_result.addr]
         } else {
             0
         }
@@ -143,24 +142,24 @@ impl Memory {
     /// Writes an unsigned 8-bit byte value to the given virtual address.
     #[inline(always)]
     pub fn write_u8(&mut self, addr: usize, val: u8) {
-        let (bank, idx, _, writable) = self.map(addr, MemoryOperation::Write);
-        if writable {
-            bank[idx] = val;
+        let mapping_result = self.map(addr, MemoryOperation::Write);
+        if mapping_result.writable {
+            mapping_result.bank[mapping_result.addr] = val;
         }
     }
 
     /// Reads an unsigned 8-bit byte value located at the given virtual address.
     #[inline(always)]
     pub fn read_u8_unrestricted(&mut self, addr: usize) -> u8 {
-        let (bank, idx, _, _) = self.map(addr, MemoryOperation::Nop);
-        bank[idx]
+        let mapping_result = self.map(addr, MemoryOperation::Nop);
+        mapping_result.bank[mapping_result.addr]
     }
 
     /// Writes an unsigned 8-bit byte value to the given virtual address.
     #[inline(always)]
     pub fn write_u8_unrestricted(&mut self, addr: usize, val: u8) {
-        let (bank, idx, _, _) = self.map(addr, MemoryOperation::Nop);
-        bank[idx] = val;
+        let mapping_result = self.map(addr, MemoryOperation::Nop);
+        mapping_result.bank[mapping_result.addr] = val;
     }
 
     /// Reads an unsigned 16-bit byte value at the given virtual address
@@ -168,10 +167,7 @@ impl Memory {
     #[inline(always)]
     pub fn read_u16(&mut self, addr: usize) -> u16 {
         // Reads two bytes starting at the given address and parses them.
-        let mut reader = Cursor::new(vec![
-            self.read_u8(addr),
-            self.read_u8(addr + 1)
-        ]);
+        let mut reader = Cursor::new(vec![self.read_u8(addr), self.read_u8(addr + 1)]);
         reader.read_u16::<LittleEndian>().unwrap()
     }
 
@@ -180,10 +176,7 @@ impl Memory {
     #[inline(always)]
     pub fn read_u16_alt(&mut self, addr: usize) -> u16 {
         // Reads two bytes starting at the given address and parses them.
-        let mut reader = Cursor::new(vec![
-            self.read_u8(addr - 1),
-            self.read_u8(addr)
-        ]);
+        let mut reader = Cursor::new(vec![self.read_u8(addr - 1), self.read_u8(addr)]);
         reader.read_u16::<LittleEndian>().unwrap()
     }
 
@@ -289,13 +282,17 @@ impl Memory {
     #[inline(always)]
     fn update_ppu_register_status(&mut self, addr: usize, operation: MemoryOperation) {
         let registers_status = &mut self.ppu_ctrl_registers_status;
-        registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written && operation == MemoryOperation::Write {
-                PPURegisterStatus::WrittenTwice
-        } else if registers_status[addr] != PPURegisterStatus::Written && registers_status[addr] != PPURegisterStatus::WrittenTwice {
+        registers_status[addr] = if registers_status[addr] == PPURegisterStatus::Written
+            && operation == MemoryOperation::Write
+        {
+            PPURegisterStatus::WrittenTwice
+        } else if registers_status[addr] != PPURegisterStatus::Written
+            && registers_status[addr] != PPURegisterStatus::WrittenTwice
+        {
             match operation {
-                MemoryOperation::Read  => PPURegisterStatus::Read,
+                MemoryOperation::Read => PPURegisterStatus::Read,
                 MemoryOperation::Write => PPURegisterStatus::Written,
-                MemoryOperation::Nop   => registers_status[addr],
+                MemoryOperation::Nop => registers_status[addr],
             }
         } else {
             registers_status[addr]
@@ -305,20 +302,65 @@ impl Memory {
     /// Returns PPU register read/write permissions for use with the I/O
     /// functions. Register status is also updated depending on the operation.
     #[inline(always)]
-    fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+    fn map_ppu_registers(&mut self, addr: usize, operation: MemoryOperation) -> MappingResult {
         self.update_ppu_register_status(addr, operation);
 
         let registers = &mut self.ppu_ctrl_registers;
         match addr {
-            0 => (registers, addr, false, true),
-            1 => (registers, addr, false, true),
-            2 => (registers, addr, true, false),
-            3 => (registers, addr, false, true),
-            4 => (registers, addr, true, true),
-            5 => (registers, addr, false, true), // Twice
-            6 => (registers, addr, false, true), // Twice
-            7 => (registers, addr, true, true),
-            _ => (registers, addr, true, true),
+            0 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: false,
+                writable: true,
+            },
+            1 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: false,
+                writable: true,
+            },
+            2 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: true,
+                writable: false,
+            },
+            3 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: false,
+                writable: true,
+            },
+            4 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: true,
+                writable: true,
+            },
+            5 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: false,
+                writable: true,
+            }, // Twice
+            6 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: false,
+                writable: true,
+            }, // Twice
+            7 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: true,
+                writable: true,
+            },
+            _ => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: true,
+                writable: true,
+            },
         }
     }
 
@@ -332,23 +374,33 @@ impl Memory {
     fn update_misc_register_status(&mut self, addr: usize, operation: MemoryOperation) {
         let registers_status = &mut self.misc_ctrl_registers_status;
         registers_status[addr] = match operation {
-            MemoryOperation::Read  => MiscRegisterStatus::Read,
+            MemoryOperation::Read => MiscRegisterStatus::Read,
             MemoryOperation::Write => MiscRegisterStatus::Written,
-            MemoryOperation::Nop   => registers_status[addr],
+            MemoryOperation::Nop => registers_status[addr],
         };
     }
 
     /// Returns misc register read/write permissions for use with the I/O
     /// functions. Register status is also updated depending on the operation.
     #[inline(always)]
-    fn map_misc_registers(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+    fn map_misc_registers(&mut self, addr: usize, operation: MemoryOperation) -> MappingResult {
         self.update_misc_register_status(addr, operation);
 
         // FIXME: Double-check permissions on these I/O registers.
         let registers = &mut self.misc_ctrl_registers;
         match addr {
-            0x14 => (registers, addr, false, true),
-            _    => (registers, addr, true, true),
+            0x14 => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: false,
+                writable: true,
+            },
+            _ => MappingResult {
+                bank: registers,
+                addr: addr,
+                readable: true,
+                writable: true,
+            },
         }
     }
 
@@ -357,27 +409,65 @@ impl Memory {
     ///
     /// TODO: Switch all references to struct members to functions so this
     /// mapper implementation can be shared between ROM mappers.
-    fn map(&mut self, addr: usize, operation: MemoryOperation) -> (&mut [u8], usize, bool, bool) {
+    fn map(&mut self, addr: usize, operation: MemoryOperation) -> MappingResult {
         match addr {
-            RAM_START_ADDR...RAM_END_ADDR =>
-                (&mut self.ram, addr, true, true),
-            RAM_MIRROR_START...RAM_MIRROR_END =>
-                (&mut self.ram, addr % RAM_SIZE, true, true),
-            PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END =>
-                self.map_ppu_registers(addr - PPU_CTRL_REGISTERS_START, operation),
-            PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END =>
-                self.map_ppu_registers((addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE, operation),
-            MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END =>
-                self.map_misc_registers(addr - MISC_CTRL_REGISTERS_START, operation),
-            EXPANSION_ROM_START...EXPANSION_ROM_END =>
-                (&mut self.expansion_rom, addr - EXPANSION_ROM_START, true, false),
-            SRAM_START...SRAM_END =>
-                (&mut self.sram, addr - SRAM_START, true, true),
-            PRG_ROM_1_START...PRG_ROM_1_END =>
-                (&mut self.prg_rom_1, addr - PRG_ROM_1_START, true, false),
-            PRG_ROM_2_START...PRG_ROM_2_END =>
-                (&mut self.prg_rom_2, addr - PRG_ROM_2_START, true, false),
-            _ => { panic!("Unable to map virtual address {:#X} to any physical address", addr) },
+            RAM_START_ADDR...RAM_END_ADDR => MappingResult {
+                bank: &mut self.ram,
+                addr: addr,
+                readable: true,
+                writable: true,
+            },
+            RAM_MIRROR_START...RAM_MIRROR_END => MappingResult {
+                bank: &mut self.ram,
+                addr: addr % RAM_SIZE,
+                readable: true,
+                writable: true,
+            },
+            PPU_CTRL_REGISTERS_START...PPU_CTRL_REGISTERS_END => {
+                self.map_ppu_registers(addr - PPU_CTRL_REGISTERS_START, operation)
+            }
+            PPU_CTRL_REGISTERS_MIRROR_START...PPU_CTRL_REGISTERS_MIRROR_END => {
+                let addr = (addr - PPU_CTRL_REGISTERS_START) % PPU_CTRL_REGISTERS_SIZE;
+                self.map_ppu_registers(addr, operation)
+            }
+            MISC_CTRL_REGISTERS_START...MISC_CTRL_REGISTERS_END => {
+                self.map_misc_registers(addr - MISC_CTRL_REGISTERS_START, operation)
+            }
+            EXPANSION_ROM_START...EXPANSION_ROM_END => MappingResult {
+                bank: &mut self.expansion_rom,
+                addr: addr - EXPANSION_ROM_START,
+                readable: true,
+                writable: false,
+            },
+            SRAM_START...SRAM_END => MappingResult {
+                bank: &mut self.sram,
+                addr: addr - SRAM_START,
+                readable: true,
+                writable: true,
+            },
+            PRG_ROM_1_START...PRG_ROM_1_END => MappingResult {
+                bank: &mut self.prg_rom_1,
+                addr: addr - PRG_ROM_1_START,
+                readable: true,
+                writable: false,
+            },
+            PRG_ROM_2_START...PRG_ROM_2_END => MappingResult {
+                bank: &mut self.prg_rom_2,
+                addr: addr - PRG_ROM_2_START,
+                readable: true,
+                writable: false,
+            },
+            _ => panic!(
+                "Unable to map virtual address {:#X} to any physical address",
+                addr
+            ),
         }
     }
+}
+
+struct MappingResult<'a> {
+    bank: &'a mut [u8],
+    addr: usize,
+    readable: bool,
+    writable: bool,
 }
